@@ -19,7 +19,7 @@ function Home() {
         </div>
         <div className="card-body">
           <h3>E-Commerce con React y Tailwind</h3>
-          <p>Estoy desarrollando el frontend de una tienda virtual para el curso. Dejo mi repositorio por si alguien quiere sumarse al equipo o dar feedback.</p>
+          <p>Estoy desarrollando el frontend de una tienda virtual. Dejo mi repo por si alguien quiere sumarse o dar feedback.</p>
           <a href="https://github.com" target="_blank" rel="noreferrer" className="github-link">
             📁 Ver repositorio en GitHub
           </a>
@@ -40,8 +40,8 @@ function Home() {
           </div>
         </div>
         <div className="card-body">
-          <h3>Diseño de Entorno Cyberpunk</h3>
-          <p>Acabo de terminar este mapa conceptual interactivo para un videojuego independiente. ¡Usa CSS dinámico para cambiar la iluminación!</p>
+          <h3>Diseño de Entorno futurista</h3>
+          <p>Acabo de terminar este mapa conceptual interactivo para un videojuego independiente.</p>
           <span className="tech-tag">Modelado 3D</span>
         </div>
         <div className="card-footer">

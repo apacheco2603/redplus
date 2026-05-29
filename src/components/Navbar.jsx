@@ -1,19 +1,21 @@
 import React from 'react';
 
-function Navbar({ theme, toggleTheme }) {
+function Navbar({ theme, toggleTheme, setPantalla }) {
   return (
     <nav className="navbar">
-      <div className="nav-logo">RedPlus<span>+</span></div>
+      <div className="nav-logo" onClick={() => setPantalla('home')} style={{ cursor: 'pointer' }}>
+        RedPlus<span>+</span>
+      </div>
       
       <div className="search-container">
-        <input type="text" placeholder="Buscar proyectos, grupos o habilidades..." className="search-input" />
+        <input type="text" placeholder="Buscar en RedPlus..." className="search-input" />
       </div>
 
       <div className="nav-actions">
         <button onClick={toggleTheme} className="btn-theme">
-          {theme === 'light' ? '🌙 Modo Oscuro' : '☀️ Modo Claro'}
+          {theme === 'light' ? '🌙 Dark' : '☀️ Light'}
         </button>
-        <button className="btn-profile">Mi Perfil</button>
+        <button className="btn-profile" onClick={() => setPantalla('profile')}>Mi Perfil</button>
       </div>
     </nav>
   );
