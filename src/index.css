@@ -1,17 +1,16 @@
-/* --- CONFIGURACIÓN DE COLORES (VARIABLES) --- */
 :root {
   --bg-main: #f4f6f9;
   --bg-card: #ffffff;
   --text-main: #1f2937;
   --text-muted: #6b7280;
-  --primary: #2563eb;       /* Azul tecnológico */
+  --primary: #2563eb;       
   --primary-hover: #1d4ed8;
   --border: #e5e7eb;
-  --accent: #10b981;       /* Verde para likes */
+  --accent: #10b981;       
 }
 
 [data-theme="dark"] {
-  --bg-main: #0f172a;      /* Azul noche oscuro */
+  --bg-main: #0f172a;      
   --bg-card: #1e293b;
   --text-main: #f8fafc;
   --text-muted: #94a3b8;
@@ -20,7 +19,6 @@
   --border: #334155;
 }
 
-/* --- ESTILOS GENERALES --- */
 body {
   margin: 0;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
@@ -29,7 +27,6 @@ body {
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* --- NAVBAR --- */
 .navbar {
   display: flex;
   justify-content: space-between;
@@ -83,17 +80,14 @@ body {
   border: none;
 }
 
-/* --- DISPOSICIÓN EN PASARELA (LAYOUT) --- */
 .main-layout {
   display: grid;
-  grid-template-columns: 280px 1fr;
   gap: 2rem;
   max-width: 1200px;
   margin: 2rem auto;
   padding: 0 1rem;
 }
 
-/* --- SIDEBAR --- */
 .sidebar {
   background-color: var(--bg-card);
   padding: 1.5rem;
@@ -123,13 +117,12 @@ body {
   transition: 0.2s;
 }
 
-.group-item:hover, .group-item.active {
+.group-item:hover {
   background-color: var(--bg-main);
   color: var(--primary);
   font-weight: 600;
 }
 
-/* --- CONTENIDO Y TARJETAS --- */
 .content-feed {
   display: flex;
   flex-direction: column;
@@ -150,6 +143,7 @@ body {
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 1.5rem;
+  text-align: left;
 }
 
 .card-header {
@@ -163,7 +157,6 @@ body {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background-color: #ccc;
 }
 
 .card-header h4 {
@@ -184,18 +177,7 @@ body {
 .card-body p {
   color: var(--text-muted);
   line-height: 1.5;
-}
-
-.github-link {
-  display: inline-block;
-  margin-top: 0.5rem;
-  color: var(--primary);
-  text-decoration: none;
-  font-weight: 500;
-}
-
-.github-link:hover {
-  text-decoration: underline;
+  margin: 0;
 }
 
 .tech-tag {
@@ -208,7 +190,6 @@ body {
   font-weight: 600;
 }
 
-/* --- FOOTER DE TARJETA (ACCIONES) --- */
 .card-footer {
   display: flex;
   gap: 1rem;
@@ -235,4 +216,55 @@ body {
 
 .btn-like:hover {
   color: var(--accent);
+}
+
+.login-box {
+  display: flex;
+  height: 100vh;
+  justify-content: center;
+  align-items: center;
+  background-color: #0f172a;
+}
+
+.login-box form {
+  background: #1e293b;
+  padding: 40px;
+  border-radius: 12px;
+  text-align: center;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+
+.login-box h2 { 
+  color: #3b82f6; 
+  margin-bottom: 20px; 
+  font-size: 2rem; 
+  font-family: sans-serif;
+}
+
+.login-box input { 
+  display: block; 
+  width: 240px; 
+  padding: 12px; 
+  margin: 12px 0; 
+  background: #0f172a; 
+  color: #fff; 
+  border: 1px solid #334155; 
+  border-radius: 6px; 
+}
+
+.login-box button { 
+  width: 100%; 
+  padding: 12px; 
+  background: #3b82f6; 
+  color: #fff; 
+  border: none; 
+  border-radius: 20px; 
+  cursor: pointer; 
+  font-weight: bold; 
+}
+
+.error { 
+  color: #e74c3c; 
+  font-size: 14px; 
+  margin-bottom: 10px; 
 }

@@ -1,55 +1,71 @@
 import React from 'react';
 
-function Home() {
+function Home({ user }) {
+  const trendingTopics = [
+    { tag: '#Retrogaming', posts: '15.4k posts', category: 'Gaming' },
+    { tag: '#HTML', posts: '8.2k posts', category: 'Consolas' },
+    { tag: '#TechPeru', posts: '12.1k posts', category: 'Tecnología' },
+    { tag: '#WebDevelopment', posts: '24.9k posts', category: 'Programación' }
+  ];
+
   return (
-    <main className="content-feed">
-      <div className="feed-header">
-        <h2>Muro de Proyectos</h2>
-        <p>Explora y colabora con los trabajos de la comunidad</p>
-      </div>
+    <>
+      <main className="content-feed">
+        <div className="feed-header">
+          <h2>Muro de Proyectos</h2>
+          <p>Bienvenido de vuelta, u/{user}</p>
+        </div>
 
-      {/* Tarjeta de Proyecto 1 */}
-      <article className="project-card">
-        <div className="card-header">
-          <img src="https://via.placeholder.com/40" alt="Avatar" className="user-avatar" />
-          <div>
-            <h4>Carlos Mendoza</h4>
-            <span className="user-badge">Estudiante - Ulima</span>
+        <article className="project-card">
+          <div className="card-header">
+            <div className="user-avatar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--primary)', color: 'white', fontWeight: 'bold' }}>u</div>
+            <div>
+              <h4>Carlos Mendoza</h4>
+              <span className="user-badge">r/HTML • Estudiante</span>
+            </div>
           </div>
-        </div>
-        <div className="card-body">
-          <h3>E-Commerce con React y Tailwind</h3>
-          <p>Estoy desarrollando el frontend de una tienda virtual. Dejo mi repo por si alguien quiere sumarse o dar feedback.</p>
-          <a href="https://github.com" target="_blank" rel="noreferrer" className="github-link">
-            📁 Ver repositorio en GitHub
-          </a>
-        </div>
-        <div className="card-footer">
-          <button className="btn-action btn-like">👍 Apoyar (15)</button>
-          <button className="btn-action">💬 Comentar (4)</button>
-        </div>
-      </article>
+          <div className="card-body">
+            <h3>Proyecto de Frontend Avanzado</h3>
+            <p>Gente, avanzamos la estructura principal del foro para la entrega. Dejo los componentes base listos para revisión grupal.</p>
+          </div>
+          <div className="card-footer">
+            <button className="btn-action btn-like">👍 Apoyar (15)</button>
+            <button className="btn-action">💬 Comentar (4)</button>
+          </div>
+        </article>
 
-      {/* Tarjeta de Proyecto 2 */}
-      <article className="project-card">
-        <div className="card-header">
-          <img src="https://via.placeholder.com/40" alt="Avatar" className="user-avatar" />
-          <div>
-            <h4>Andrea R.</h4>
-            <span className="user-badge">Modeladora 3D</span>
+        <article className="project-card">
+          <div className="card-header">
+            <div className="user-avatar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--accent)', color: 'white', fontWeight: 'bold' }}>u</div>
+            <div>
+              <h4>u/{user}</h4>
+              <span className="user-badge">r/WebDevelopment • Creador</span>
+            </div>
           </div>
+          <div className="card-body">
+            <h3>Duda con useEffect en React</h3>
+            <p>¿Alguien sabe por qué se me duplica el renderizado al cargar los datos simulados de la lista de tendencias?</p>
+          </div>
+          <div className="card-footer">
+            <button className="btn-action btn-like">👍 Apoyar (3)</button>
+            <button className="btn-action">💬 Comentar (1)</button>
+          </div>
+        </article>
+      </main>
+
+      <aside className="sidebar" style={{ width: '280px' }}>
+        <h3>⚡ Tendencias para ti</h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '1rem' }}>
+          {trendingTopics.map((topic, index) => (
+            <div key={index} style={{ padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
+              <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{topic.category}</span>
+              <p style={{ margin: '2px 0', fontWeight: 'bold', fontSize: '14px' }}>{topic.tag}</p>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{topic.posts}</span>
+            </div>
+          ))}
         </div>
-        <div className="card-body">
-          <h3>Diseño de Entorno futurista</h3>
-          <p>Acabo de terminar este mapa conceptual interactivo para un videojuego independiente.</p>
-          <span className="tech-tag">Modelado 3D</span>
-        </div>
-        <div className="card-footer">
-          <button className="btn-action btn-like">👍 Apoyar (32)</button>
-          <button className="btn-action">💬 Comentar (8)</button>
-        </div>
-      </article>
-    </main>
+      </aside>
+    </>
   );
 }
 

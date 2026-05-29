@@ -4,14 +4,12 @@ function Sidebar({ setPantalla }) {
   return (
     <aside className="sidebar">
       <h3 onClick={() => setPantalla('groups')} style={{ cursor: 'pointer' }}>
-        📌 Grupos Temáticos
+        📌 Comunidades
       </h3>
       <ul className="group-list">
-        <li className="group-item" onClick={() => setPantalla('groups')}>🌐 Frontend</li>
-        <li className="group-item" onClick={() => setPantalla('groups')}>⚙️ Backend</li>
-        <li className="group-item" onClick={() => setPantalla('groups')}>📊 Data Science</li>
-        <li className="group-item" onClick={() => setPantalla('groups')}>📡 Redes y TI</li>
-        <li className="group-item" onClick={() => setPantalla('groups')}>🎮 Videojuegos</li>
+        <li className="group-item" onClick={() => setPantalla('home')}>🏠 Home</li>
+        <li className="group-item" onClick={() => setPantalla('groups')}>🕹️ r/retrogaming</li>
+        <li className="group-item" onClick={() => setPantalla('groups')}>👾 r/HTML</li>
       </ul>
     </aside>
   );
