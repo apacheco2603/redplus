@@ -1,5 +1,3 @@
-import React from 'react';
-
 function Groups() {
   const comunidades = [
     { name: "r/retrogaming", desc: "Espacio de videojuegos clásicos y consolas antiguas.", posts: "15.4k" },

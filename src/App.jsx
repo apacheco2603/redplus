@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
 import Home from './pages/Home';
 import Profile from './pages/Profile';
 import Groups from './pages/Groups';
+import LiveStreams from './pages/LiveStreams';
+import ChatWidget from './components/ChatWidget';
 
 function App() {
   const [theme, setTheme] = useState('light');
@@ -29,6 +31,7 @@ function App() {
   const cambiarVista = () => {
     if (pantalla === 'profile') return <Profile user={user} />;
     if (pantalla === 'groups') return <Groups />;
+    if (pantalla === 'live') return <LiveStreams />;
     return <Home user={user} />;
   };
 
@@ -58,6 +61,7 @@ function App() {
         <Sidebar setPantalla={setPantalla} />
         {cambiarVista()}
       </div>
+      <ChatWidget />
     </div>
   );
 }

@@ -1,5 +1,3 @@
-import React from 'react';
-
 function Navbar({ theme, toggleTheme, setPantalla, setIsLoggedIn }) {
   return (
     <nav className="navbar">
