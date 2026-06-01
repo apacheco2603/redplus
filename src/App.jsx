@@ -32,8 +32,8 @@ function App() {
 
     const cambiarVista = () => {
       if (pantalla === 'profile') return <Profile user={user} />;
-      if (pantalla === 'groups') return <Groups setPantalla={setPantalla} setActiveGroup={setActiveGroup} />; // Pasamos props
-      if (pantalla === 'groupChat') return <GroupChat group={activeGroup} setPantalla={setPantalla} user={user} />; // Nueva vista
+      if (pantalla === 'groups') return <Groups setPantalla={setPantalla} setActiveGroup={setActiveGroup} />;
+      if (pantalla === 'groupChat') return <GroupChat group={activeGroup} setPantalla={setPantalla} user={user} />;
       if (pantalla === 'live') return <LiveStreams />;
       return <Home user={user} />;
     };
