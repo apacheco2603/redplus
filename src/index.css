@@ -660,3 +660,103 @@ body:has(.twitch-layout) .chat-widget-container { display: none !important; }
   background-color: var(--border);
   border-radius: 10px;
 }
+
+/* ==========================================
+   DISEÑO RESPONSIVO (MÓVILES)
+   ========================================== */
+
+.main-layout {
+  grid-template-columns: 240px 1fr 280px; 
+}
+
+@media (max-width: 768px) {
+  
+  .main-layout {
+    grid-template-columns: 1fr; 
+  }
+
+  .navbar {
+    flex-direction: column;
+    gap: 15px;
+    padding: 1rem;
+  }
+
+  .search-input {
+    width: 100%;
+  }
+
+  /* ==========================================
+     CHAT WIDGET - RESPONSIVO (MÓVILES)
+     ========================================== */
+  
+  .chat-widget-container {
+    right: 0;
+    left: 0;
+    width: 100%;
+    padding: 0;
+    justify-content: flex-end;
+  }
+
+  .chat-main-bar {
+    width: 100%;
+    border-radius: 16px 16px 0 0;
+  }
+
+  .chat-windows-dock {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 100%;
+    z-index: 10;
+  }
+
+  .chat-window {
+    width: 100%;
+    height: 65vh !important; 
+    border-radius: 16px 16px 0 0;
+  }
+
+  /* ==========================================
+     EN VIVO - RESPONSIVO (MÓVILES)
+     ========================================== */
+  
+  /* Cambiamos el layout de cuadrícula (grid) a una pila vertical (flex) */
+  .twitch-layout {
+    position: relative;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    height: auto;
+  }
+
+  /* 1. Ocultamos la lista de canales izquierda */
+  .twitch-sidebar {
+    display: none;
+  }
+
+  /* 2. Ajustamos el contenido central (Video e Info) */
+  .twitch-main-content {
+    padding: 1rem;
+    overflow: visible;
+  }
+
+  /* 3. Reacomodamos la barra del streamer para que los botones bajen si no caben */
+  .twitch-streamer-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .twitch-streamer-actions {
+    width: 100%;
+    margin-top: 15px;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  /* 4. El chat pasa a estar debajo de todo, dándole una buena altura para leer */
+  .twitch-chat {
+    border-left: none;
+    border-top: 1px solid var(--border);
+    height: 500px;
+  }
+}

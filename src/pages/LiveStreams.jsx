@@ -68,10 +68,12 @@ function LiveStreams() {
   const [fileIdx, setFileIdx] = useState(0);
   const [chat, setChat] = useState([]);
   const [chatInput, setChatInput] = useState('');
-  const chatEndRef = useRef(null);
+  const chatContainerRef = useRef(null);
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
   }, [chat]);
 
   useEffect(() => {
@@ -253,7 +255,8 @@ function LiveStreams() {
               <span>¡Drops activos y respeto en el chat!</span>
             </div>
           </div>
-          <div className="twitch-chat-messages">
+
+          <div className="twitch-chat-messages" ref={chatContainerRef}>
             {chat.map((msg, i) => (
               <div key={i} className="twitch-chat-row">
                 {msg.isSystem
@@ -266,8 +269,9 @@ function LiveStreams() {
                 }
               </div>
             ))}
-            <div ref={chatEndRef} />
+            
           </div>
+
           <div className="twitch-chat-footer">
             <form onSubmit={sendMessage} className="twitch-chat-input-wrapper">
               <input

@@ -1,7 +1,7 @@
 function Sidebar({ setPantalla }) {
   return (
     <aside className="sidebar">
-      <h3 onClick={() => setPantalla('groups')} style={{ cursor: 'pointer' }}>
+      <h3>
         📌 Comunidades
       </h3>
       <ul className="group-list">

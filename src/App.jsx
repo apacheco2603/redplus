@@ -62,7 +62,7 @@ function App() {
         setPantalla={setPantalla} 
         setIsLoggedIn={setIsLoggedIn}
       />
-      <div className="main-layout" style={{ gridTemplateColumns: '240px 1fr 280px' }}>
+      <div className="main-layout">
         <Sidebar setPantalla={setPantalla} />
         {cambiarVista()}
       </div>
