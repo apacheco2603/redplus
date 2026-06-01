@@ -30,6 +30,19 @@ function Home({ user }) {
           <p>Bienvenido de vuelta, u/{user}</p>
         </div>
 
+        {/* Barra de Publicación */}
+        <div className="project-card" style={{ marginBottom: '20px', display: 'flex', gap: '10px' }}>
+          <input 
+            type="text" 
+            placeholder="Crear una publicación general..." 
+            style={{ flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-main)', color: 'var(--text-main)', outline: 'none' }}
+          />
+          <button style={{ background: 'var(--primary)', color: 'white', border: 'none', padding: '0 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
+            Publicar
+          </button>
+        </div>
+        {/* Fin */}
+
         {[...POSTS, myPost].map((p, i) => (
           <article key={i} className="project-card">
             <div className="card-header">
