@@ -1,10 +1,15 @@
 function Groups() {
   const comunidades = [
-    { name: "r/retrogaming", desc: "Espacio de videojuegos clásicos y consolas antiguas.", posts: "15.4k" },
-    { name: "r/HTML", desc: "Todo sobre maquetación web, Frontend y trucos de CSS.", posts: "8.2k" },
-    { name: "r/TechPeru", desc: "Comunidad tecnológica local y debates de TI.", posts: "12.1k" },
-    { name: "r/WebDevelopment", desc: "Programación general y arquitecturas modernas.", posts: "24.9k" }
+    { id: 'frontend', name: "Frontend", desc: "Todo sobre React, UI/UX, CSS, Vite y maquetación web.", posts: "15.4k" },
+    { id: 'backend', name: "Backend", desc: "Node.js, APIs, bases de datos y arquitectura de servidores.", posts: "8.2k" },
+    { id: 'data', name: "Data Science", desc: "Python, Machine Learning, manejo de datos y estadísticas.", posts: "12.1k" },
+    { id: 'redes', name: "Redes y TI", desc: "Infraestructura, servidores Linux, hardware y recuperación de datos.", posts: "24.9k" }
   ];
+
+  const entrarAlGrupo = (grupo) => {
+    setActiveGroup(grupo);
+    setPantalla('groupChat');
+  };
 
   return (
     <main className="content-feed">
