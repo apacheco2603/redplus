@@ -6,10 +6,12 @@ import Profile from './pages/Profile';
 import Groups from './pages/Groups';
 import LiveStreams from './pages/LiveStreams';
 import ChatWidget from './components/ChatWidget';
+import GroupChat from './pages/GroupChat';
 
 function App() {
   const [theme, setTheme] = useState('light');
   const [pantalla, setPantalla] = useState('home');
+  const [activeGroup, setActiveGroup] = useState(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState('');
   const [pass, setPass] = useState('');
@@ -28,12 +30,13 @@ function App() {
     }
   };
 
-  const cambiarVista = () => {
-    if (pantalla === 'profile') return <Profile user={user} />;
-    if (pantalla === 'groups') return <Groups />;
-    if (pantalla === 'live') return <LiveStreams />;
-    return <Home user={user} />;
-  };
+    const cambiarVista = () => {
+      if (pantalla === 'profile') return <Profile user={user} />;
+      if (pantalla === 'groups') return <Groups setPantalla={setPantalla} setActiveGroup={setActiveGroup} />; // Pasamos props
+      if (pantalla === 'groupChat') return <GroupChat group={activeGroup} setPantalla={setPantalla} user={user} />; // Nueva vista
+      if (pantalla === 'live') return <LiveStreams />;
+      return <Home user={user} />;
+    };
 
   if (!isLoggedIn) {
     return (
