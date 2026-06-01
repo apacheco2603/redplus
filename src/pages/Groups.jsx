@@ -8,7 +8,7 @@ function Groups({ setPantalla, setActiveGroup }) {
 
   const entrarAlGrupo = (grupo) => {
     setActiveGroup(grupo);
-    setPantalla('groupChat');
+    setPantalla('groupForum');
   };
 
   return (
@@ -25,7 +25,7 @@ function Groups({ setPantalla, setActiveGroup }) {
             <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>{grupo.desc}</p>
           </div>
           <button className="btn-primary" onClick={() => entrarAlGrupo(grupo)} style={{ padding: '8px 16px', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold', background: 'var(--primary)', color: 'white', border: 'none' }}>
-            Entrar al chat
+            Entrar
           </button>
         </div>
       ))}

@@ -56,7 +56,7 @@ function GroupChat({ group, setPantalla, user }) {
     <main className="content-feed">
       <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '20px' }}>
         <button 
-          onClick={() => setPantalla('groups')}
+          onClick={() => setPantalla('groupForum')}
           style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-main)', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
         >
           ⬅ Volver

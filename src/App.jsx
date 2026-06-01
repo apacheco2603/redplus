@@ -7,6 +7,7 @@ import Groups from './pages/Groups';
 import LiveStreams from './pages/LiveStreams';
 import ChatWidget from './components/ChatWidget';
 import GroupChat from './pages/GroupChat';
+import GroupForum from './pages/GroupForum';
 
 function App() {
   const [theme, setTheme] = useState('light');
@@ -33,6 +34,7 @@ function App() {
     const cambiarVista = () => {
       if (pantalla === 'profile') return <Profile user={user} />;
       if (pantalla === 'groups') return <Groups setPantalla={setPantalla} setActiveGroup={setActiveGroup} />;
+      if (pantalla === 'groupForum') return <GroupForum group={activeGroup} setPantalla={setPantalla} />;
       if (pantalla === 'groupChat') return <GroupChat group={activeGroup} setPantalla={setPantalla} user={user} />;
       if (pantalla === 'live') return <LiveStreams />;
       return <Home user={user} />;
