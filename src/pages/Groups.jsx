@@ -1,4 +1,4 @@
-function Groups() {
+function Groups({ setPantalla, setActiveGroup }) {
   const comunidades = [
     { id: 'frontend', name: "Frontend", desc: "Todo sobre React, UI/UX, CSS, Vite y maquetación web.", posts: "15.4k" },
     { id: 'backend', name: "Backend", desc: "Node.js, APIs, bases de datos y arquitectura de servidores.", posts: "8.2k" },
@@ -24,8 +24,8 @@ function Groups() {
             <h3 style={{ margin: '0 0 5px 0', color: 'var(--primary)' }}>{grupo.name}</h3>
             <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>{grupo.desc}</p>
           </div>
-          <button className="btn-primary" style={{ padding: '8px 16px', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold' }}>
-            Unirse
+          <button className="btn-primary" onClick={() => entrarAlGrupo(grupo)} style={{ padding: '8px 16px', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold', background: 'var(--primary)', color: 'white', border: 'none' }}>
+            Entrar al chat
           </button>
         </div>
       ))}
