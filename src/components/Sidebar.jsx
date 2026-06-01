@@ -1,5 +1,3 @@
-import React from 'react';
-
 function Sidebar({ setPantalla }) {
   return (
     <aside className="sidebar">
@@ -8,6 +6,7 @@ function Sidebar({ setPantalla }) {
       </h3>
       <ul className="group-list">
         <li className="group-item" onClick={() => setPantalla('home')}>🏠 Home</li>
+        <li className="group-item" onClick={() => setPantalla('live')} style={{ color: '#ef4444', fontWeight: 'bold' }}>🔴 EN VIVO</li>
         <li className="group-item" onClick={() => setPantalla('groups')}>🕹️ r/retrogaming</li>
         <li className="group-item" onClick={() => setPantalla('groups')}>👾 r/HTML</li>
       </ul>
