@@ -56,30 +56,11 @@ function Profile({ user }) {
       <main className="feed">
         <div className="post" style={{ padding: '20px' }}>
           <div className="profile-banner">
-            <div className="avatar" style={{ 
-              overflow: 'hidden', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center', 
-              width: '60px', 
-              height: '60px', 
-              borderRadius: '50%', 
-              background: '#2a3c42',
-              fontSize: '30px'
-            }}>
-              {avatar && avatar.length > 10 ? (
-                <img 
-                  src={avatar} 
-                  alt="avatar" 
-                  style={{ 
-                    width: '100%', 
-                    height: '100%', 
-                    objectFit: 'cover',
-                    display: 'block' 
-                  }} 
-                />
+            <div className="avatar" style={{ overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '50%', background: '#2a3c42' }}>
+              {avatar && avatar !== '👤' ? (
+                <img src={avatar} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               ) : (
-                "👤"
+                <span style={{ fontSize: '20px' }}>👤</span>
               )}
             </div>
             <h2>u/{user}</h2>
