@@ -1,34 +1,68 @@
-function Groups({ setPantalla, setActiveGroup }) {
-  const comunidades = [
-    { id: 'frontend', name: "Frontend", desc: "Todo sobre React, UI/UX, CSS, Vite y maquetación web.", posts: "15.4k" },
-    { id: 'backend', name: "Backend", desc: "Node.js, APIs, bases de datos y arquitectura de servidores.", posts: "8.2k" },
-    { id: 'data', name: "Data Science", desc: "Python, Machine Learning, manejo de datos y estadísticas.", posts: "12.1k" },
-    { id: 'redes', name: "Redes y TI", desc: "Infraestructura, servidores Linux, hardware y recuperación de datos.", posts: "24.9k" }
-  ];
-
-  const entrarAlGrupo = (grupo) => {
-    setActiveGroup(grupo);
-    setPantalla('groupForum');
-  };
-
+function Groups({ setPantalla, setActiveGroup, communities = [], joinedCommIds = [], onToggleJoin }) {
   return (
     <main className="content-feed">
       <div style={{ marginBottom: '20px' }}>
-        <h2>Comunidades Tecnológicas</h2>
-        <p style={{ color: 'var(--text-muted)' }}>Explora los grupos disponibles en RedPlus</p>
+        <h2>Explorar Comunidades</h2>
+        <p style={{ color: 'var(--text-muted)' }}>Descubre y únete a grupos en RedPlus</p>
       </div>
 
-      {comunidades.map((grupo, index) => (
-        <div key={index} className="project-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-          <div>
-            <h3 style={{ margin: '0 0 5px 0', color: 'var(--primary)' }}>{grupo.name}</h3>
-            <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>{grupo.desc}</p>
-          </div>
-          <button className="btn-primary" onClick={() => entrarAlGrupo(grupo)} style={{ padding: '8px 16px', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold', background: 'var(--primary)', color: 'white', border: 'none' }}>
-            Entrar
-          </button>
+      {communities.length > 0 ? (
+        communities.map((grupo) => {
+          const isJoined = joinedCommIds.includes(grupo.id);
+          return (
+            <div 
+              key={grupo.id} 
+              className="project-card" 
+              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}
+            >
+              <div>
+                <h3 style={{ margin: '0 0 5px 0', color: 'var(--primary)' }}>r/{grupo.name}</h3>
+                <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>{grupo.desc}</p>
+                <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginTop: '6px' }}>
+                  👥 {grupo.members?.length || 0} miembros
+                </span>
+              </div>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button 
+                  className={`btn-join ${isJoined ? 'joined' : ''}`}
+                  onClick={() => onToggleJoin(grupo.id)}
+                  style={{ 
+                    padding: '8px 16px', 
+                    borderRadius: '20px', 
+                    cursor: 'pointer', 
+                    fontWeight: 'bold', 
+                    background: isJoined ? 'var(--bg-main)' : 'var(--primary)', 
+                    color: isJoined ? 'var(--text-main)' : 'white', 
+                    border: isJoined ? '1px solid var(--border)' : 'none' 
+                  }}
+                >
+                  {isJoined ? '✓ Unido' : '+ Unirse'}
+                </button>
+                <button 
+                  className="btn-enter" 
+                  onClick={() => setActiveGroup(grupo)} 
+                  style={{ 
+                    padding: '8px 16px', 
+                    borderRadius: '20px', 
+                    cursor: 'pointer', 
+                    fontWeight: 'bold', 
+                    background: 'var(--accent)', 
+                    color: 'white', 
+                    border: 'none' 
+                  }}
+                >
+                  Ver Foro
+                </button>
+              </div>
+            </div>
+          );
+        })
+      ) : (
+        <div className="project-card" style={{ textAlign: 'center', padding: '40px' }}>
+          <h3>No hay comunidades creadas</h3>
+          <p style={{ color: 'var(--text-muted)' }}>¡Sé el primero en crear una comunidad usando el menú de la izquierda!</p>
         </div>
-      ))}
+      )}
     </main>
   );
 }

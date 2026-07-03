@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { api } from '../services/api';
 
 const TRENDING = [
   { tag: '#Retrogaming', posts: '15.4k posts', category: 'Gaming' },
@@ -7,85 +8,87 @@ const TRENDING = [
   { tag: '#WebDev',      posts: '24.9k posts', category: 'Programación' }
 ];
 
-function Home({ user }) {
-  const [publicaciones, setPublicaciones] = useState(() => {
-    const guardadas = JSON.parse(localStorage.getItem('posts_redplus'));
-    if (guardadas && guardadas.length > 0) return guardadas;
+function Home({ user, isPopularView, joinedCommIds = [] }) {
+  const [publicaciones, setPublicaciones] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-    return [
-      {
-        id: 1,
-        author: 'Carlos Mendoza',
-        role: 'r/HTML • Estudiante',
-        color: 'var(--primary)',
-        title: 'Proyecto de Frontend Avanzado',
-        body: 'Gente, avanzamos la estructura principal del foro para la entrega. Dejo los componentes base listos para revisión grupal.',
-        likes: 15,
-        usuariosLike: [],
-        comentarios: []
-      },
-      {
-        id: 2,
-        author: `u/${user || 'usuario'}`,
-        role: 'r/WebDevelopment • Creador',
-        color: 'var(--accent)',
-        title: 'Duda con useEffect en React',
-        body: '¿Alguien sabe por qué se duplica el renderizado al cargar datos simulados de la lista de tendencias?',
-        likes: 3,
-        usuariosLike: [],
-        comentarios: []
-      }
-    ];
-  });
-
+  // Estados para creación
+  const [nuevoPostTitulo, setNuevoPostTitulo] = useState('');
   const [nuevoPostTexto, setNuevoPostTexto] = useState('');
+
+  // Estados para comentarios nuevos
   const [nuevosComentarios, setNuevosComentarios] = useState({});
   const [postAbierto, setPostAbierto] = useState({});
 
-  const guardarEnStorage = (nuevosPosts) => {
-    setPublicaciones(nuevosPosts);
-    localStorage.setItem('posts_redplus', JSON.stringify(nuevosPosts));
+  // Estados para edición de post
+  const [editingPostId, setEditingPostId] = useState(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editBody, setEditBody] = useState('');
+
+  // Estados para edición de comentarios
+  const [editingCommentKey, setEditingCommentKey] = useState(null); // 'postId-commentId'
+  const [editCommentText, setEditCommentText] = useState('');
+
+  // Cargar publicaciones de la API
+  const cargarPosts = async () => {
+    try {
+      setLoading(true);
+      const data = await api.getPosts();
+      setPublicaciones(data);
+    } catch (err) {
+      console.error('Error al cargar publicaciones:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleCrearPost = () => {
-    if (!nuevoPostTexto.trim()) return;
+  useEffect(() => {
+    cargarPosts();
+  }, []);
 
-    const nuevoPost = {
-      id: Date.now(),
-      author: user || 'usuario',
-      role: 'r/General • Estudiante',
-      color: 'var(--primary)',
-      title: 'Publicación General',
-      body: nuevoPostTexto.trim(),
-      likes: 0,
-      usuariosLike: [],
-      comentarios: []
-    };
+  const handleCrearPost = async (e) => {
+    e.preventDefault();
+    if (!nuevoPostTexto.trim() || !nuevoPostTitulo.trim()) return;
 
-    guardarEnStorage([nuevoPost, ...publicaciones]);
-    setNuevoPostTexto('');
-  };
-
-  const handleLike = (id) => {
-    const nuevosPosts = publicaciones.map(post => {
-      if (post.id === id) {
-        const yaDioLike = post.usuariosLike.includes(user);
-        let nuevosLikes = post.likes;
-        let nuevosUsuarios = [...post.usuariosLike];
-
-        if (yaDioLike) {
-          nuevosLikes -= 1;
-          nuevosUsuarios = nuevosUsuarios.filter(u => u !== user);
-        } else {
-          nuevosLikes += 1;
-          nuevosUsuarios.push(user);
-        }
-
-        return { ...post, likes: nuevosLikes, usuariosLike: nuevosUsuarios };
+    try {
+      const res = await api.createPost(user, nuevoPostTitulo.trim(), nuevoPostTexto.trim(), 'general');
+      if (res.success) {
+        setNuevoPostTitulo('');
+        setNuevoPostTexto('');
+        // Recargar la lista
+        await cargarPosts();
       }
-      return post;
-    });
-    guardarEnStorage(nuevosPosts);
+    } catch (err) {
+      console.error(err);
+      alert('Error al crear publicación.');
+    }
+  };
+
+  const handleLike = async (id) => {
+    try {
+      // Modificar optimísticamente en UI
+      setPublicaciones(prev => prev.map(post => {
+        if (post.id === id) {
+          const yaDioLike = post.usuariosLike?.includes(user);
+          let nuevosLikes = post.likes;
+          let nuevosUsuarios = [...(post.usuariosLike || [])];
+
+          if (yaDioLike) {
+            nuevosLikes -= 1;
+            nuevosUsuarios = nuevosUsuarios.filter(u => u !== user);
+          } else {
+            nuevosLikes += 1;
+            nuevosUsuarios.push(user);
+          }
+          return { ...post, likes: nuevosLikes, usuariosLike: nuevosUsuarios };
+        }
+        return post;
+      }));
+
+      await api.likePost(id, user);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const toggleComentarios = (id) => {
@@ -102,121 +105,275 @@ function Home({ user }) {
     });
   };
 
-  const handleAddComentario = (e, postId) => {
+  const handleAddComentario = async (e, postId) => {
     e.preventDefault();
     const textoComentario = nuevosComentarios[postId];
     if (!textoComentario || !textoComentario.trim()) return;
 
-    const nuevosPosts = publicaciones.map(post => {
-      if (post.id === postId) {
-        return {
-          ...post,
-          comentarios: [
-            ...post.comentarios,
-            { autor: user || 'usuario', texto: textoComentario.trim() }
-          ]
-        };
+    try {
+      const res = await api.addComment(postId, user, textoComentario.trim());
+      if (res.success) {
+        setNuevosComentarios({
+          ...nuevosComentarios,
+          [postId]: ''
+        });
+        // Actualizar el post respectivo en el listado local
+        setPublicaciones(prev => prev.map(p => p.id === postId ? res.post : p));
       }
-      return post;
-    });
-
-    guardarEnStorage(nuevosPosts);
-    setNuevosComentarios({
-      ...nuevosComentarios,
-      [postId]: ''
-    });
+    } catch (err) {
+      console.error(err);
+    }
   };
+
+  // Acciones de Post (Editar / Eliminar)
+  const handleStartEditPost = (post) => {
+    setEditingPostId(post.id);
+    setEditTitle(post.title);
+    setEditBody(post.body);
+  };
+
+  const handleCancelEditPost = () => {
+    setEditingPostId(null);
+  };
+
+  const handleSaveEditPost = async (id) => {
+    if (!editTitle.trim() || !editBody.trim()) return;
+    try {
+      const res = await api.updatePost(id, editTitle.trim(), editBody.trim());
+      if (res.success) {
+        setPublicaciones(prev => prev.map(p => p.id === id ? { ...p, title: res.post.title, body: res.post.body } : p));
+        setEditingPostId(null);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error al guardar cambios.');
+    }
+  };
+
+  const handleDeletePost = async (id) => {
+    if (!confirm('¿Seguro que deseas eliminar esta publicación?')) return;
+    try {
+      await api.deletePost(id);
+      setPublicaciones(prev => prev.filter(p => p.id !== id));
+    } catch (err) {
+      console.error(err);
+      alert('Error al eliminar publicación.');
+    }
+  };
+
+  // Acciones de Comentario (Editar / Eliminar)
+  const handleStartEditComment = (postId, comment) => {
+    setEditingCommentKey(`${postId}-${comment.id}`);
+    setEditCommentText(comment.texto);
+  };
+
+  const handleSaveEditComment = async (postId, commentId) => {
+    if (!editCommentText.trim()) return;
+    try {
+      const res = await api.updateComment(postId, commentId, editCommentText.trim());
+      if (res.success) {
+        setPublicaciones(prev => prev.map(p => p.id === postId ? res.post : p));
+        setEditingCommentKey(null);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeleteComment = async (postId, commentId) => {
+    if (!confirm('¿Deseas eliminar este comentario?')) return;
+    try {
+      const res = await api.deleteComment(postId, commentId);
+      if (res.success) {
+        setPublicaciones(prev => prev.map(p => p.id === postId ? res.post : p));
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Filtrar publicaciones si es vista "Popular"
+  // "lo que es favorito en votos en mis cominudades unidas"
+  // Filtra posts que pertenezcan a comunidades en joinedCommIds y los ordena por likes descendente.
+  const postsAMostrar = isPopularView
+    ? publicaciones
+        .filter(p => p.communityId !== 'general' && joinedCommIds.includes(p.communityId))
+        .sort((a, b) => b.likes - a.likes)
+    : publicaciones;
 
   return (
     <>
       <main className="content-feed">
         <div className="feed-header">
-          <h2>Muro de Proyectos</h2>
+          <h2>{isPopularView ? '🔥 Publicaciones Populares' : '🏠 Muro Principal'}</h2>
           <p>Bienvenido de vuelta, u/{user}</p>
         </div>
 
-        <div className="project-card" style={{ marginBottom: '20px', display: 'flex', gap: '10px' }}>
-          <input 
-            type="text" 
-            placeholder="Crear una publicación general..." 
-            value={nuevoPostTexto}
-            onChange={(e) => setNuevoPostTexto(e.target.value)}
-            style={{ flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-main)', color: 'var(--text-main)', outline: 'none' }}
-          />
-          <button 
-            onClick={handleCrearPost}
-            style={{ background: 'var(--primary)', color: 'white', border: 'none', padding: '0 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
-          >
-            Publicar
-          </button>
-        </div>
+        {/* Solo mostrar la caja de crear post en la vista general */}
+        {!isPopularView && (
+          <form onSubmit={handleCrearPost} className="project-card create-post-card">
+            <h3>Crear una publicación</h3>
+            <input 
+              type="text" 
+              placeholder="Título de la publicación..." 
+              value={nuevoPostTitulo}
+              onChange={(e) => setNuevoPostTitulo(e.target.value)}
+              required
+              className="create-post-title"
+            />
+            <textarea 
+              placeholder="¿Qué estás pensando hoy, u/usuario?" 
+              value={nuevoPostTexto}
+              onChange={(e) => setNuevoPostTexto(e.target.value)}
+              required
+              rows="3"
+              className="create-post-body"
+            />
+            <div className="create-post-footer">
+              <button type="submit" className="btn-primary">Publicar</button>
+            </div>
+          </form>
+        )}
 
-        {publicaciones.map((p) => {
-          const dioLike = p.usuariosLike?.includes(user);
-          const estaAbierto = postAbierto[p.id];
+        {loading ? (
+          <div className="loading-container">Cargando publicaciones...</div>
+        ) : postsAMostrar.length > 0 ? (
+          postsAMostrar.map((p) => {
+            const dioLike = p.usuariosLike?.includes(user);
+            const estaAbierto = postAbierto[p.id];
+            const isOwnPost = p.author === user;
+            const isEditingPost = editingPostId === p.id;
 
-          return (
-            <article key={p.id} className="project-card" style={{ marginBottom: '20px' }}>
-              <div className="card-header">
-                <div className="user-avatar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: p.color || 'var(--primary)', color: 'white', fontWeight: 'bold' }}>
-                  {p.author.charAt(0).toLowerCase()}
-                </div>
-                <div>
-                  <h4>{p.author.startsWith('u/') ? p.author : `u/${p.author}`}</h4>
-                  <span className="user-badge">{p.role}</span>
-                </div>
-              </div>
-              <div className="card-body">
-                <h3>{p.title}</h3>
-                <p>{p.body}</p>
-              </div>
-              <div className="card-footer" style={{ display: 'flex', gap: '10px' }}>
-                <button 
-                  className="btn-action btn-like" 
-                  onClick={() => handleLike(p.id)}
-                  style={{ color: dioLike ? '#10b981' : 'inherit', fontWeight: dioLike ? 'bold' : 'normal' }}
-                >
-                  {dioLike ? '❤️ Apoyado' : '👍 Apoyar'} ({p.likes})
-                </button>
-                <button className="btn-action" onClick={() => toggleComentarios(p.id)}>
-                  💬 Comentar ({p.comentarios?.length || 0})
-                </button>
-              </div>
-
-              {estaAbierto && (
-                <div style={{ marginTop: '15px', padding: '15px', background: 'var(--bg-main)', borderRadius: '8px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
-                    {p.comentarios?.map((com, index) => (
-                      <div key={index} style={{ fontSize: '13px', paddingBottom: '4px', borderBottom: '1px solid var(--border)' }}>
-                        <span style={{ fontWeight: 'bold' }}>u/{com.autor}: </span>
-                        <span>{com.texto}</span>
-                      </div>
-                    ))}
+            return (
+              <article key={p.id} className="project-card reddit-post">
+                <div className="card-header">
+                  <div className="user-avatar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#2563eb', color: 'white', fontWeight: 'bold' }}>
+                    {p.author.charAt(0).toUpperCase()}
                   </div>
-                  <form onSubmit={(e) => handleAddComentario(e, p.id)} style={{ display: 'flex', gap: '10px' }}>
-                    <input 
-                      type="text" 
-                      placeholder="Escribe un comentario..." 
-                      style={{ flex: 1, padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-main)', outline: 'none', fontSize: '13px' }}
-                      value={nuevosComentarios[p.id] || ''}
-                      onChange={(e) => handleInputChange(p.id, e.target.value)}
-                      required
-                    />
-                    <button 
-                      type="submit" 
-                      style={{ background: 'var(--primary)', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold' }}
-                    >
-                      Enviar
-                    </button>
-                  </form>
+                  <div className="post-meta-info">
+                    <h4>u/{p.author}</h4>
+                    <span className="user-badge">
+                      {p.communityId !== 'general' ? `r/${p.communityId}` : 'Publicación General'}
+                    </span>
+                  </div>
+                  {isOwnPost && !isEditingPost && (
+                    <div className="post-actions-menu">
+                      <button className="btn-menu-edit" onClick={() => handleStartEditPost(p)}>✏️</button>
+                      <button className="btn-menu-delete" onClick={() => handleDeletePost(p.id)}>🗑️</button>
+                    </div>
+                  )}
                 </div>
-              )}
-            </article>
-          );
-        })}
+
+                <div className="card-body">
+                  {isEditingPost ? (
+                    <div className="post-editing-box">
+                      <input 
+                        type="text" 
+                        value={editTitle} 
+                        onChange={e => setEditTitle(e.target.value)} 
+                        className="edit-post-title-input"
+                      />
+                      <textarea 
+                        value={editBody} 
+                        onChange={e => setEditBody(e.target.value)} 
+                        className="edit-post-body-input"
+                        rows="4"
+                      />
+                      <div className="post-editing-actions">
+                        <button onClick={() => handleSaveEditPost(p.id)} className="btn-save">Guardar</button>
+                        <button onClick={handleCancelEditPost} className="btn-cancel">Cancelar</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <h3>{p.title}</h3>
+                      <p>{p.body}</p>
+                    </>
+                  )}
+                </div>
+
+                <div className="card-footer">
+                  <button 
+                    className="btn-action btn-like" 
+                    onClick={() => handleLike(p.id)}
+                    style={{ color: dioLike ? '#10b981' : 'inherit', fontWeight: dioLike ? 'bold' : 'normal' }}
+                  >
+                    {dioLike ? '❤️ Apoyado' : '👍 Apoyar'} ({p.likes})
+                  </button>
+                  <button className="btn-action" onClick={() => toggleComentarios(p.id)}>
+                    💬 Comentar ({p.comentarios?.length || 0})
+                  </button>
+                </div>
+
+                {estaAbierto && (
+                  <div className="comments-section">
+                    <div className="comments-list">
+                      {p.comentarios && p.comentarios.length > 0 ? (
+                        p.comentarios.map((com) => {
+                          const isOwnComment = com.autor === user;
+                          const isEditingComment = editingCommentKey === `${p.id}-${com.id}`;
+
+                          return (
+                            <div key={com.id} className="comment-item">
+                              <div className="comment-header">
+                                <span className="comment-author">u/{com.autor}</span>
+                                {isOwnComment && !isEditingComment && (
+                                  <div className="comment-opt-actions">
+                                    <button onClick={() => handleStartEditComment(p.id, com)}>Editar</button>
+                                    <button onClick={() => handleDeleteComment(p.id, com.id)}>Eliminar</button>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="comment-body">
+                                {isEditingComment ? (
+                                  <div className="comment-editing-box">
+                                    <input 
+                                      type="text" 
+                                      value={editCommentText} 
+                                      onChange={e => setEditCommentText(e.target.value)} 
+                                    />
+                                    <button onClick={() => handleSaveEditComment(p.id, com.id)}>✓</button>
+                                    <button onClick={() => setEditingCommentKey(null)}>✕</button>
+                                  </div>
+                                ) : (
+                                  <p>{com.texto}</p>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <p className="no-comments-text">No hay comentarios aún. ¡Sé el primero!</p>
+                      )}
+                    </div>
+                    <form onSubmit={(e) => handleAddComentario(e, p.id)} className="comment-form">
+                      <input 
+                        type="text" 
+                        placeholder="Escribe un comentario..." 
+                        value={nuevosComentarios[p.id] || ''}
+                        onChange={(e) => handleInputChange(p.id, e.target.value)}
+                        required
+                      />
+                      <button type="submit">Enviar</button>
+                    </form>
+                  </div>
+                )}
+              </article>
+            );
+          })
+        ) : (
+          <div className="empty-feed-card">
+            <h3>No hay publicaciones para mostrar</h3>
+            {isPopularView ? (
+              <p>Únete a comunidades y apoya publicaciones para ver contenido aquí.</p>
+            ) : (
+              <p>¡Crea la primera publicación en el muro!</p>
+            )}
+          </div>
+        )}
       </main>
 
-      <aside className="sidebar" style={{ width: '280px' }}>
+      <aside className="sidebar trending-aside" style={{ width: '280px' }}>
         <h3>⚡ Tendencias para ti</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '1rem' }}>
           {TRENDING.map((t, i) => (

@@ -1,53 +1,77 @@
 import { useState, useEffect, useRef } from 'react';
+import { api } from '../services/api';
 
 function GroupChat({ group, setPantalla, user }) {
   const [mensajes, setMensajes] = useState([]);
   const [nuevoMensaje, setNuevoMensaje] = useState('');
+  const [loading, setLoading] = useState(true);
   const mensajesFinRef = useRef(null); 
 
-  useEffect(() => {
+  const cargarMensajes = async () => {
     if (!group) return;
-    
-    const mensajesIniciales = [
-      { id: 1, emisor: 'Admin', texto: `¡Bienvenidos al canal de ${group.name}! Reglas: Respeto y compartir código.` }
-    ];
-
-    if (group.id === 'frontend') {
-      mensajesIniciales.push({ id: 2, emisor: 'react_dev', texto: '¿Alguien ha probado usar hooks personalizados para el estado de la UI?' });
-    } else if (group.id === 'redes') {
-      mensajesIniciales.push(
-        { id: 2, emisor: 'sysadmin', texto: 'Ayer tuve que diagnosticar un corto en la PCB de un disco duro de 1TB. Un dolor de cabeza.' },
-        { id: 3, emisor: 'linux_fan', texto: 'Para rescates de datos, recomiendo muchísimo bootear Fedora y usar ddrescue. Literalmente me salvó un Toshiba entero la semana pasada.' }
-      );
+    try {
+      const data = await api.getGroupChats(group.id);
+      setMensajes(data);
+    } catch (err) {
+      console.error('Error cargando chat de grupo:', err);
+    } finally {
+      setLoading(false);
     }
+  };
 
-    setMensajes(mensajesIniciales);
+  useEffect(() => {
+    cargarMensajes();
+    const interval = setInterval(cargarMensajes, 2500); // Polling del chat en vivo cada 2.5s
+    return () => clearInterval(interval);
   }, [group]);
 
   useEffect(() => {
     mensajesFinRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [mensajes]);
 
-  const enviarMensaje = (e) => {
+  const enviarMensaje = async (e) => {
     e.preventDefault();
     if (!nuevoMensaje.trim()) return;
 
-    const miMensaje = { id: Date.now(), emisor: `u/${user}`, texto: nuevoMensaje, propio: true };
-    setMensajes(prev => [...prev, miMensaje]);
+    const textoMsg = nuevoMensaje.trim();
     setNuevoMensaje('');
 
-    setTimeout(() => {
-      const respuestasMock = ['¡Interesante aporte!', 'Totalmente de acuerdo contigo.', '¿Podrías explicar un poco más sobre eso?', 'Voy a probar eso en mi próximo proyecto.'];
-      const respuestaAleatoria = respuestasMock[Math.floor(Math.random() * respuestasMock.length)];
-      
-      const respuesta = { 
-        id: Date.now() + 1, 
-        emisor: 'bot_comunidad', 
-        texto: respuestaAleatoria 
-      };
-      
-      setMensajes(prev => [...prev, respuesta]);
-    }, 1500);
+    // Agregar optimísticamente
+    const localMsg = {
+      id: Date.now(),
+      emisor: `u/${user}`,
+      texto: textoMsg,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      propio: true
+    };
+    setMensajes(prev => [...prev, localMsg]);
+
+    try {
+      const res = await api.sendGroupChat(group.id, `u/${user}`, textoMsg);
+      // Reemplazar localMsg con el guardado en el backend
+      setMensajes(prev => prev.map(m => m.id === localMsg.id ? res.message : m));
+
+      // Simulamos respuesta de un bot en la comunidad, guardándolo también en el backend
+      setTimeout(async () => {
+        const respuestasMock = [
+          '¡Interesante aporte!', 
+          'Totalmente de acuerdo contigo.', 
+          '¿Podrías explicar un poco más sobre eso?', 
+          'Voy a probar eso en mi próximo proyecto.'
+        ];
+        const respuestaAleatoria = respuestasMock[Math.floor(Math.random() * respuestasMock.length)];
+        
+        try {
+          const botRes = await api.sendGroupChat(group.id, 'bot_comunidad', respuestaAleatoria);
+          setMensajes(prev => [...prev, botRes.message]);
+        } catch (botErr) {
+          console.error(botErr);
+        }
+      }, 1500);
+    } catch (err) {
+      console.error(err);
+      alert('Error al enviar mensaje al chat en vivo.');
+    }
   };
 
   if (!group) return null;
@@ -63,7 +87,7 @@ function GroupChat({ group, setPantalla, user }) {
         </button>
         <div>
           <h2 style={{ margin: '0' }}>Canal: {group.name}</h2>
-          <p style={{ color: 'var(--text-muted)', margin: '0', fontSize: '14px' }}>🟢 Conectado vía WebSockets (Simulado)</p>
+          <p style={{ color: 'var(--text-muted)', margin: '0', fontSize: '14px' }}>🟢 Conectado vía HTTP Polling (Persistido)</p>
         </div>
       </div>
 
@@ -71,22 +95,34 @@ function GroupChat({ group, setPantalla, user }) {
         
         {/* Área de mensajes */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '20px', background: 'var(--bg-main)', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-          {mensajes.map((msg) => (
-            <div key={msg.id} style={{ alignSelf: msg.propio ? 'flex-end' : 'flex-start', maxWidth: '80%' }}>
-              <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px', display: 'block', textAlign: msg.propio ? 'right' : 'left' }}>
-                {msg.emisor}
-              </span>
-              <div style={{ 
-                background: msg.propio ? 'var(--primary)' : 'var(--bg-card)', 
-                color: msg.propio ? 'white' : 'var(--text-main)',
-                padding: '10px 15px', 
-                borderRadius: '12px',
-                border: msg.propio ? 'none' : '1px solid var(--border)'
-              }}>
-                {msg.texto}
-              </div>
-            </div>
-          ))}
+          {loading ? (
+            <div style={{ textAlign: 'center', color: 'var(--text-muted)' }}>Cargando chat...</div>
+          ) : mensajes.length > 0 ? (
+            mensajes.map((msg) => {
+              const esPropio = msg.emisor === `u/${user}`;
+              return (
+                <div key={msg.id} style={{ alignSelf: esPropio ? 'flex-end' : 'flex-start', maxWidth: '80%' }}>
+                  <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px', display: 'block', textAlign: esPropio ? 'right' : 'left' }}>
+                    {msg.emisor}
+                  </span>
+                  <div style={{ 
+                    background: esPropio ? 'var(--primary)' : 'var(--bg-card)', 
+                    color: esPropio ? 'white' : 'var(--text-main)',
+                    padding: '10px 15px', 
+                    borderRadius: '12px',
+                    border: esPropio ? 'none' : '1px solid var(--border)'
+                  }}>
+                    {msg.texto}
+                  </div>
+                  <span style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px', display: 'block', textAlign: esPropio ? 'right' : 'left' }}>
+                    {msg.time}
+                  </span>
+                </div>
+              );
+            })
+          ) : (
+            <div style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No hay mensajes. Escribe algo para iniciar.</div>
+          )}
           <div ref={mensajesFinRef} />
         </div>
 

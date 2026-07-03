@@ -1,4 +1,4 @@
-function Navbar({ theme, toggleTheme, setPantalla, setIsLoggedIn }) {
+function Navbar({ theme, toggleTheme, setPantalla, onLogout }) {
   return (
     <nav className="navbar">
       <div className="nav-logo" onClick={() => setPantalla('home')} style={{ cursor: 'pointer' }}>
@@ -14,7 +14,7 @@ function Navbar({ theme, toggleTheme, setPantalla, setIsLoggedIn }) {
           {theme === 'light' ? '🌙 Dark' : '☀️ Light'}
         </button>
         <button className="btn-profile" onClick={() => setPantalla('profile')}>Mi Perfil</button>
-        <button className="btn-theme" style={{ background: '#e74c3c', color: 'white', border: 'none' }} onClick={() => { setIsLoggedIn(false); setPantalla('home'); }}>
+        <button className="btn-theme" style={{ background: '#e74c3c', color: 'white', border: 'none' }} onClick={onLogout}>
           Salir
         </button>
       </div>
@@ -22,4 +22,4 @@ function Navbar({ theme, toggleTheme, setPantalla, setIsLoggedIn }) {
   );
 }
 
-export default Navbar;
+export default Navbar;

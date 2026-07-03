@@ -9,44 +9,174 @@ import ChatWidget from './components/ChatWidget';
 import GroupChat from './pages/GroupChat';
 import GroupForum from './pages/GroupForum';
 import Register from './pages/Register';
+import Messages from './pages/Messages';
+import { api } from './services/api';
 
 function App() {
   const [theme, setTheme] = useState('light');
   const [pantalla, setPantalla] = useState('home');
   const [activeGroup, setActiveGroup] = useState(null);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    return localStorage.getItem('session_isLoggedIn') === 'true';
+  });
   const [esLogin, setEsLogin] = useState(true);
-  const [user, setUser] = useState('');
+  const [user, setUser] = useState(() => {
+    return localStorage.getItem('session_user') || '';
+  });
   const [pass, setPass] = useState('');
   const [error, setError] = useState('');
+
+  // Estados unificados del backend
+  const [communities, setCommunities] = useState([]);
+  const [joinedCommIds, setJoinedCommIds] = useState([]);
+  const [recientesIds, setRecientesIds] = useState([]);
+
+  // Modal para crear comunidad
+  const [isCreateCommOpen, setIsCreateCommOpen] = useState(false);
+  const [newCommName, setNewCommName] = useState('');
+  const [newCommDesc, setNewCommDesc] = useState('');
+  const [commError, setCommError] = useState('');
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
-  const handleLogin = (e) => {
-    e.preventDefault();
-    const usuariosDb = JSON.parse(localStorage.getItem('usuarios_redplus')) || [];
-    
-    const usuarioValido = usuariosDb.find(
-      u => u.username.toLowerCase() === user.trim().toLowerCase() && u.password === pass
-    );
+  // Cargar datos al iniciar sesión
+  useEffect(() => {
+    if (!isLoggedIn || !user) return;
 
-    if (usuarioValido || (user.trim().toLowerCase() === 'usuario' && pass === '1234')) {
-      setIsLoggedIn(true);
-      setError('');
-    } else {
-      setError('Usuario no registrado o contraseña incorrecta.');
+    async function loadData() {
+      try {
+        const comms = await api.getCommunities();
+        setCommunities(comms);
+        setJoinedCommIds(comms.filter(c => c.members?.includes(user)).map(c => c.id));
+
+        const rec = await api.getRecientes(user);
+        setRecientesIds(rec);
+      } catch (err) {
+        console.error('Error cargando comunidades del backend:', err);
+      }
+    }
+    loadData();
+  }, [isLoggedIn, user]);
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setError('');
+    try {
+      const res = await api.login(user, pass);
+      if (res.success) {
+        setIsLoggedIn(true);
+        setUser(res.user.username);
+        localStorage.setItem('session_isLoggedIn', 'true');
+        localStorage.setItem('session_user', res.user.username);
+      }
+    } catch (err) {
+      setError(err.message || 'Usuario no registrado o contraseña incorrecta.');
+    }
+  };
+
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setUser('');
+    localStorage.removeItem('session_isLoggedIn');
+    localStorage.removeItem('session_user');
+    setPantalla('home');
+  };
+
+  const handleSelectGroup = async (group) => {
+    setActiveGroup(group);
+    setPantalla('groupForum');
+    try {
+      // Registrar visita en el backend
+      const res = await api.addReciente(user, group.id);
+      setRecientesIds(res.recientes);
+    } catch (err) {
+      console.error('Error al guardar comunidad reciente:', err);
+    }
+  };
+
+  const handleToggleJoin = async (groupId) => {
+    try {
+      await api.joinCommunity(groupId, user);
+      // Recargar comunidades
+      const comms = await api.getCommunities();
+      setCommunities(comms);
+      setJoinedCommIds(comms.filter(c => c.members?.includes(user)).map(c => c.id));
+    } catch (err) {
+      console.error('Error al unirse/salir del grupo:', err);
+    }
+  };
+
+  const handleCreateCommunitySubmit = async (e) => {
+    e.preventDefault();
+    setCommError('');
+    if (!newCommName.trim()) return;
+
+    const id = newCommName.trim().toLowerCase().replace(/\s+/g, '-');
+    try {
+      await api.createCommunity(id, newCommName.trim(), newCommDesc.trim());
+      
+      // Unirse automáticamente
+      await api.joinCommunity(id, user);
+
+      // Recargar comunidades y cerrar modal
+      const comms = await api.getCommunities();
+      setCommunities(comms);
+      setJoinedCommIds(comms.filter(c => c.members?.includes(user)).map(c => c.id));
+      
+      setIsCreateCommOpen(false);
+      setNewCommName('');
+      setNewCommDesc('');
+      
+      // Ir a la nueva comunidad
+      const newCommObj = comms.find(c => c.id === id);
+      if (newCommObj) {
+        handleSelectGroup(newCommObj);
+      }
+    } catch (err) {
+      setCommError(err.message || 'Error al crear la comunidad.');
     }
   };
 
   const cambiarVista = () => {
     if (pantalla === 'profile') return <Profile user={user} />;
-    if (pantalla === 'groups') return <Groups setPantalla={setPantalla} setActiveGroup={setActiveGroup} />;
-    if (pantalla === 'groupForum') return <GroupForum group={activeGroup} setPantalla={setPantalla} />;
-    if (pantalla === 'groupChat') return <GroupChat group={activeGroup} setPantalla={setPantalla} user={user} />;
+    
+    if (pantalla === 'explore') {
+      return (
+        <Groups 
+          setPantalla={setPantalla} 
+          setActiveGroup={handleSelectGroup}
+          communities={communities}
+          joinedCommIds={joinedCommIds}
+          onToggleJoin={handleToggleJoin}
+        />
+      );
+    }
+
+    if (pantalla === 'groupForum') {
+      // Buscar información fresca del grupo activo
+      const freshGroup = communities.find(c => c.id === activeGroup?.id) || activeGroup;
+      return (
+        <GroupForum 
+          group={freshGroup} 
+          setPantalla={setPantalla} 
+          user={user}
+          isJoined={joinedCommIds.includes(freshGroup?.id)}
+          onToggleJoin={handleToggleJoin}
+        />
+      );
+    }
+
+    if (pantalla === 'groupChat') {
+      return <GroupChat group={activeGroup} setPantalla={setPantalla} user={user} />;
+    }
+
     if (pantalla === 'live') return <LiveStreams />;
-    return <Home user={user} />;
+    if (pantalla === 'messages') return <Messages user={user} />;
+
+    // Vista principal ('home') y popular ('popular')
+    return <Home user={user} isPopularView={pantalla === 'popular'} joinedCommIds={joinedCommIds} />;
   };
 
   if (!isLoggedIn) {
@@ -95,13 +225,61 @@ function App() {
         theme={theme} 
         toggleTheme={() => setTheme(theme === 'light' ? 'dark' : 'light')} 
         setPantalla={setPantalla} 
-        setIsLoggedIn={setIsLoggedIn}
+        onLogout={handleLogout}
       />
       <div className="main-layout">
-        <Sidebar setPantalla={setPantalla} />
+        <Sidebar 
+          pantalla={pantalla}
+          setPantalla={setPantalla} 
+          communities={communities}
+          joinedCommIds={joinedCommIds}
+          recientesIds={recientesIds}
+          onSelectGroup={handleSelectGroup}
+          onCreateCommClick={() => setIsCreateCommOpen(true)}
+        />
         {cambiarVista()}
       </div>
-      <ChatWidget />
+
+      {/* Chat flotante al pie persistido en el backend */}
+      <ChatWidget user={user} />
+
+      {/* MODAL DE CREACIÓN DE COMUNIDAD */}
+      {isCreateCommOpen && (
+        <div className="modal-overlay" onClick={() => setIsCreateCommOpen(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Crear una comunidad</h3>
+              <button className="modal-close-btn" onClick={() => setIsCreateCommOpen(false)}>✕</button>
+            </div>
+            <form onSubmit={handleCreateCommunitySubmit}>
+              {commError && <p className="error">{commError}</p>}
+              <div className="form-group">
+                <label>Nombre de la comunidad</label>
+                <input 
+                  type="text" 
+                  placeholder="r/Ejemplo" 
+                  value={newCommName}
+                  onChange={e => setNewCommName(e.target.value)}
+                  required 
+                />
+              </div>
+              <div className="form-group">
+                <label>Descripción</label>
+                <textarea 
+                  placeholder="¿De qué trata tu comunidad? (Opcional)" 
+                  value={newCommDesc}
+                  onChange={e => setNewCommDesc(e.target.value)}
+                  rows="4"
+                />
+              </div>
+              <div className="modal-actions">
+                <button type="button" className="btn-cancel" onClick={() => setIsCreateCommOpen(false)}>Cancelar</button>
+                <button type="submit" className="btn-submit">Crear comunidad</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

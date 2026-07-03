@@ -1,19 +1,42 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { api } from '../services/api';
 
 function Profile({ user }) {
-  const usuariosDb = JSON.parse(localStorage.getItem('usuarios_redplus')) || [];
-  const datosUsuario = usuariosDb.find(u => u.username === user) || {
-    username: user,
-    bio: 'Espacio de trabajo del grupo. Desarrollando vistas modulares en React utilizando estados dinámicos simples para simular la persistencia.',
-    avatar: '👤',
-    habilities: ['React', 'CSS', 'Vite']
+  const [loading, setLoading] = useState(true);
+  const [editando, setEditando] = useState(false);
+  
+  // Datos del perfil
+  const [bio, setBio] = useState('');
+  const [avatar, setAvatar] = useState('👤');
+  const [habilidades, setHabilidades] = useState([]);
+  
+  const [nuevaHabilidad, setNuevaHabilidad] = useState('');
+
+  // Cargar datos del perfil del backend / fallback
+  const cargarPerfil = async () => {
+    try {
+      setLoading(true);
+      const usuarios = await api.getUsers();
+      const datos = usuarios.find(u => u.username.toLowerCase() === user.toLowerCase()) || {
+        username: user,
+        bio: '¡Hola! Bienvenido a mi perfil en RedPlus.',
+        avatar: '👤',
+        habilities: ['React', 'CSS', 'Vite']
+      };
+
+      setBio(datos.bio || '');
+      setAvatar(datos.avatar || '👤');
+      setHabilidades(datos.habilities || []);
+    } catch (err) {
+      console.error('Error cargando perfil:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const [editando, setEditando] = useState(false);
-  const [bio, setBio] = useState(datosUsuario.bio);
-  const [avatar, setAvatar] = useState(datosUsuario.avatar);
-  const [nuevaHabilidad, setNuevaHabilidad] = useState('');
-  const [habilidades, setHabilidades] = useState(datosUsuario.habilities);
+  useEffect(() => {
+    cargarPerfil();
+  }, [user]);
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -26,17 +49,20 @@ function Profile({ user }) {
     }
   };
 
-  const guardarCambios = () => {
-    const nuevasDb = usuariosDb.map(u => {
-      if (u.username === user) {
-        return { ...u, bio, avatar, habilities: habilidades };
-      }
-      return u;
-    });
-
-    localStorage.setItem('usuarios_redplus', JSON.stringify(nuevasDb));
-    setEditando(false);
-    alert('¡Perfil actualizado en la base de datos local!');
+  const guardarCambios = async () => {
+    try {
+      await api.updateProfile({
+        username: user,
+        bio,
+        avatar,
+        habilities: habilidades
+      });
+      setEditando(false);
+      alert('¡Perfil actualizado con éxito!');
+    } catch (err) {
+      console.error(err);
+      alert('Error al guardar los cambios del perfil.');
+    }
   };
 
   const agregarHabilidad = (e) => {
@@ -51,11 +77,15 @@ function Profile({ user }) {
     setHabilidades(habilidades.filter(h => h !== hab));
   };
 
+  if (loading) {
+    return <div className="loading-container">Cargando perfil...</div>;
+  }
+
   return (
     <>
       <main className="feed">
-        <div className="post" style={{ padding: '20px' }}>
-          <div className="profile-banner">
+        <div className="post project-card" style={{ padding: '20px' }}>
+          <div className="profile-banner" style={{ display: 'flex', gap: '15px', alignItems: 'center', marginBottom: '15px' }}>
             <div className="avatar" style={{ 
               overflow: 'hidden', 
               display: 'flex', 
@@ -84,7 +114,7 @@ function Profile({ user }) {
             </div>
             <h2>u/{user}</h2>
           </div>
-          <p style={{ color: '#82959b', marginBottom: '15px' }}>Miembro Estudiante Universitario</p>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>Miembro Estudiante Universitario</p>
           
           {editando ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '15px' }}>
@@ -103,19 +133,19 @@ function Profile({ user }) {
                 onChange={e => setBio(e.target.value)} 
               />
 
-              <button className="btn-profile" onClick={guardarCambios}>Guardar Cambios</button>
+              <button className="btn-profile btn-submit" onClick={guardarCambios}>Guardar Cambios</button>
             </div>
           ) : (
             <>
-              <p style={{ fontSize: '14px', lineHeight: '1.5' }}>{bio}</p>
+              <p style={{ fontSize: '14px', lineHeight: '1.5' }}>{bio || "Sin biografía aún."}</p>
               <button className="btn-theme" style={{ marginTop: '10px', marginBottom: '15px' }} onClick={() => setEditando(true)}>
                 ✏️ Editar Perfil
               </button>
             </>
           )}
 
-          <div style={{ marginTop: '20px', borderTop: '1px solid #1a282d', paddingTop: '15px' }}>
-            <h4>Tecnologías del Proyecto</h4>
+          <div style={{ marginTop: '20px', borderTop: '1px solid var(--border)', paddingTop: '15px' }}>
+            <h4>Tecnologías de Interés</h4>
             
             {editando && (
               <form onSubmit={agregarHabilidad} style={{ display: 'flex', gap: '10px', marginBottom: '1rem' }}>
@@ -127,32 +157,36 @@ function Profile({ user }) {
                   value={nuevaHabilidad}
                   onChange={e => setNuevaHabilidad(e.target.value)}
                 />
-                <button type="submit" className="btn-profile" style={{ padding: '4px 12px' }}>+ Añadir</button>
+                <button type="submit" className="btn-primary" style={{ padding: '4px 12px', borderRadius: '6px' }}>+ Añadir</button>
               </form>
             )}
 
             <div style={{ display: 'flex', gap: '10px', marginTop: '10px', flexWrap: 'wrap' }}>
-              {habilidades.map((hab, index) => (
-                <span key={index} style={{ background: '#2a3c42', padding: '4px 8px', borderRadius: '6px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  {hab}
-                  {editando && (
-                    <button 
-                      type="button" 
-                      onClick={() => eliminarHabilidad(hab)}
-                      style={{ background: 'none', border: 'none', color: '#e74c3c', cursor: 'pointer', fontWeight: 'bold', padding: 0 }}
-                    >
-                      ×
-                    </button>
-                  )}
-                </span>
-              ))}
+              {habilidades.length > 0 ? (
+                habilidades.map((hab, index) => (
+                  <span key={index} style={{ background: 'var(--bg-main)', padding: '4px 10px', borderRadius: '6px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid var(--border)' }}>
+                    {hab}
+                    {editando && (
+                      <button 
+                        type="button" 
+                        onClick={() => eliminarHabilidad(hab)}
+                        style={{ background: 'none', border: 'none', color: '#e74c3c', cursor: 'pointer', fontWeight: 'bold', padding: 0 }}
+                      >
+                        ×
+                      </button>
+                    )}
+                  </span>
+                ))
+              ) : (
+                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Ninguna habilidad agregada.</span>
+              )}
             </div>
           </div>
         </div>
       </main>
 
-      <aside className="side-right">
-        <div className="trending-card">
+      <aside className="side-right" style={{ width: '280px' }}>
+        <div className="trending-card project-card">
           <h3>Estadísticas u/{user}</h3>
           <p style={{ fontSize: '14px', margin: '5px 0' }}>Karma de Post: 18</p>
           <p style={{ fontSize: '14px', margin: '5px 0' }}>Comentarios: 5</p>

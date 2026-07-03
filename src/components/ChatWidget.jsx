@@ -1,135 +1,189 @@
 import { useState, useEffect, useRef } from 'react';
+import { api } from '../services/api';
 
-const CONTACTS = [
-  { id: 'carlos', name: 'Carlos Mendoza', role: 'r/HTML • Estudiante',      color: '#2563eb', avatar: 'C', online: true  },
-  { id: 'ana',    name: 'Ana Gómez',      role: 'r/WebDev • Creadora',       color: '#10b981', avatar: 'A', online: true  },
-  { id: 'david',  name: 'David Ruiz',     role: 'r/retrogaming • Moderador', color: '#f59e0b', avatar: 'D', online: true  },
-  { id: 'laura',  name: 'Laura Torres',   role: 'r/TechPeru • Diseñadora',   color: '#ec4899', avatar: 'L', online: false }
-];
-
-const INIT_MSGS = {
-  carlos: [{ sender: 'contact', text: '¡Hola! ¿Pudiste revisar los componentes para la entrega grupal?', time: '10:30' }],
-  ana:    [{ sender: 'contact', text: '¿Qué tal va el muro de proyectos? ¡Se ve increíble!', time: '10:45' }],
-  david:  [{ sender: 'contact', text: '¡El fin de semana organizamos torneo de juegos clásicos. ¿Te apuntas?', time: 'Ayer' }],
-  laura:  [{ sender: 'contact', text: 'Vi tu publicación sobre React. ¡Muy buena explicación!', time: 'Hace 2 días' }]
-};
-
-const REPLIES = {
-  carlos: ['¡Genial! Sigamos puliendo los detalles.', 'Revisaré los componentes y te aviso.', '¡La entrega grupal va excelente!'],
-  ana:    ['React 19 maneja estados de forma muy óptima.', '¡CSS nativo con variables es súper rápido!', 'Recuerda el arreglo de dependencias en useEffect.'],
-  david:  ['¡Deberíamos armar una partida!', 'Las consolas retro tienen un encanto especial. 👾', '¡Apuntado al 100%!'],
-  laura:  ['¡Gracias por el feedback!', 'El diseño usa variables CSS para ambos temas.', '¡Subo los cambios a la rama principal!'],
-  default:['¡Súper interesante! 🚀', '¡Déjame revisar y te respondo.', '¡Gracias por compartirlo!']
-};
-
-const now = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-const pick = arr => arr[Math.floor(Math.random() * arr.length)];
-
-function ChatWidget() {
-  const [open, setOpen]       = useState(false);
-  const [chats, setChats]     = useState([]);
-  const [minimized, setMin]   = useState([]);
-  const [msgs, setMsgs]       = useState(INIT_MSGS);
-  const [typing, setTyping]   = useState({});
-  const [unread, setUnread]   = useState({});
-  const [inputs, setInputs]   = useState({});
+function ChatWidget({ user }) {
+  const [open, setOpen] = useState(false);
+  const [contacts, setContacts] = useState([]);
+  const [chats, setChats] = useState([]); // List of active chat contact usernames
+  const [minimized, setMin] = useState([]); // List of minimized contact usernames
+  const [msgs, setMsgs] = useState({}); // Messages grouped by contact username: { username: [msgObj, ...] }
+  const [unread, setUnread] = useState({}); // Unread counts: { username: count }
+  const [inputs, setInputs] = useState({}); // Inputs per active chat: { username: text }
   const endRefs = useRef({});
 
+  // Cargar lista de usuarios
   useEffect(() => {
-    chats.forEach(id => {
-      if (!minimized.includes(id)) endRefs.current[id]?.scrollIntoView({ behavior: 'smooth' });
+    if (!user) return;
+    async function loadContacts() {
+      try {
+        const list = await api.getUsers();
+        // Filtrar a uno mismo
+        const others = list.filter(u => u.username.toLowerCase() !== user.toLowerCase());
+        setContacts(others);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    loadContacts();
+  }, [user]);
+
+  // Cargar y sincronizar mensajes del backend periódicamente
+  useEffect(() => {
+    if (!user) return;
+
+    let isMounted = true;
+    async function syncMessages() {
+      try {
+        const allMsgs = await api.getMessages(user);
+        
+        // Agrupar mensajes por contacto
+        const grouped = {};
+        allMsgs.forEach(m => {
+          const chatPartner = m.senderId === user ? m.receiverId : m.senderId;
+          if (!grouped[chatPartner]) grouped[chatPartner] = [];
+          grouped[chatPartner].push(m);
+        });
+
+        if (isMounted) {
+          setMsgs(grouped);
+        }
+      } catch (err) {
+        console.error('Error sincronizando mensajes en ChatWidget:', err);
+      }
+    }
+
+    syncMessages();
+    const interval = setInterval(syncMessages, 3000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [user]);
+
+  // Hacer scroll al recibir nuevos mensajes
+  useEffect(() => {
+    chats.forEach(username => {
+      if (!minimized.includes(username)) {
+        endRefs.current[username]?.scrollIntoView({ behavior: 'smooth' });
+      }
     });
-  }, [msgs, chats, minimized, typing]);
+  }, [msgs, chats, minimized]);
 
-  const openChat = (id) => {
-    if (!chats.includes(id)) setChats(prev => [...prev, id]);
-    setMin(prev => prev.filter(x => x !== id));
-    setUnread(prev => ({ ...prev, [id]: 0 }));
+  const openChat = (username) => {
+    if (!chats.includes(username)) {
+      setChats(prev => [...prev, username]);
+    }
+    setMin(prev => prev.filter(x => x !== username));
+    setUnread(prev => ({ ...prev, [username]: 0 }));
   };
 
-  const closeChat = (id, e) => {
+  const closeChat = (username, e) => {
     e.stopPropagation();
-    setChats(prev => prev.filter(x => x !== id));
-    setMin(prev => prev.filter(x => x !== id));
+    setChats(prev => prev.filter(x => x !== username));
+    setMin(prev => prev.filter(x => x !== username));
   };
 
-  const toggleMin = (id, e) => {
+  const toggleMin = (username, e) => {
     e.stopPropagation();
-    if (minimized.includes(id)) {
-      setMin(prev => prev.filter(x => x !== id));
-      setUnread(prev => ({ ...prev, [id]: 0 }));
+    if (minimized.includes(username)) {
+      setMin(prev => prev.filter(x => x !== username));
+      setUnread(prev => ({ ...prev, [username]: 0 }));
     } else {
-      setMin(prev => [...prev, id]);
+      setMin(prev => [...prev, username]);
     }
   };
 
-  const sendMsg = (id, e) => {
+  const sendMsg = async (username, e) => {
     e.preventDefault();
-    const text = (inputs[id] || '').trim();
+    const text = (inputs[username] || '').trim();
     if (!text) return;
-    setMsgs(prev => ({ ...prev, [id]: [...(prev[id] || []), { sender: 'user', text, time: now() }] }));
-    setInputs(prev => ({ ...prev, [id]: '' }));
 
-    // Respuesta automática
-    setTimeout(() => {
-      setTyping(prev => ({ ...prev, [id]: true }));
-      setTimeout(() => {
-        setTyping(prev => ({ ...prev, [id]: false }));
-        const reply = pick(REPLIES[id] || REPLIES.default);
-        setMsgs(prev => ({ ...prev, [id]: [...(prev[id] || []), { sender: 'contact', text: reply, time: now() }] }));
-        if (!chats.includes(id) || minimized.includes(id))
-          setUnread(prev => ({ ...prev, [id]: (prev[id] || 0) + 1 }));
-      }, 1500);
-    }, 800);
+    // Limpiar input de inmediato
+    setInputs(prev => ({ ...prev, [username]: '' }));
+
+    // Crear mensaje optimista localmente
+    const optMsg = {
+      id: Date.now(),
+      senderId: user,
+      receiverId: username,
+      text,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      optimistic: true
+    };
+
+    setMsgs(prev => ({
+      ...prev,
+      [username]: [...(prev[username] || []), optMsg]
+    }));
+
+    try {
+      const res = await api.sendMessage(user, username, text);
+      // Reemplazar con el mensaje real persistido
+      setMsgs(prev => ({
+        ...prev,
+        [username]: (prev[username] || []).map(m => m.optimistic && m.text === text ? res.message : m)
+      }));
+    } catch (err) {
+      console.error(err);
+      alert('No se pudo enviar el mensaje.');
+      setMsgs(prev => ({
+        ...prev,
+        [username]: (prev[username] || []).filter(m => !m.optimistic)
+      }));
+    }
   };
 
   const totalUnread = Object.values(unread).reduce((a, b) => a + b, 0);
 
   return (
     <div className="chat-widget-container">
-      {/* Ventanas de chat abiertas */}
+      {/* Ventanas de chat abiertas flotantes */}
       <div className="chat-windows-dock">
-        {chats.map(id => {
-          const c = CONTACTS.find(x => x.id === id);
+        {chats.map(username => {
+          const c = contacts.find(x => x.username === username);
           if (!c) return null;
-          const isMin = minimized.includes(id);
+          const isMin = minimized.includes(username);
+          const chatHistory = msgs[username] || [];
+
           return (
-            <div key={id} className={`chat-window ${isMin ? 'minimized' : ''}`}>
-              <div className="chat-window-header" onClick={e => toggleMin(id, e)}>
+            <div key={username} className={`chat-window ${isMin ? 'minimized' : ''}`}>
+              <div className="chat-window-header" onClick={e => toggleMin(username, e)}>
                 <div className="chat-window-user">
-                  <div className="chat-window-avatar" style={{ background: c.color }}>{c.avatar}</div>
+                  <div className="chat-window-avatar" style={{ background: c.avatar.length === 1 ? '#2563eb' : 'transparent' }}>
+                    {c.avatar.length === 1 ? c.avatar : <img src={c.avatar} alt="avatar" style={{ width: '100%', height: '100%', borderRadius: '50%' }} />}
+                  </div>
                   <h5 className="chat-window-name">
-                    {c.name}
-                    {(unread[id] > 0) && <span className="chat-badge" style={{ marginLeft: 6, fontSize: '0.65rem' }}>{unread[id]}</span>}
+                    u/{c.username}
+                    {(unread[username] > 0) && <span className="chat-badge" style={{ marginLeft: 6, fontSize: '0.65rem' }}>{unread[username]}</span>}
                   </h5>
                 </div>
                 <div className="chat-window-actions">
-                  <button className="chat-window-btn" onClick={e => toggleMin(id, e)}>{isMin ? '▲' : '−'}</button>
-                  <button className="chat-window-btn" onClick={e => closeChat(id, e)} style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>✕</button>
+                  <button className="chat-window-btn" onClick={e => toggleMin(username, e)}>{isMin ? '▲' : '−'}</button>
+                  <button className="chat-window-btn" onClick={e => closeChat(username, e)} style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>✕</button>
                 </div>
               </div>
               {!isMin && (
                 <>
                   <div className="chat-window-messages">
-                    {(msgs[id] || []).map((m, i) => (
-                      <div key={i} className={`message-wrapper ${m.sender === 'user' ? 'sent' : 'received'}`}>
-                        <div className="message-bubble">{m.text}</div>
-                        <span className="message-time">{m.time}</span>
-                      </div>
-                    ))}
-                    {typing[id] && (
-                      <div className="typing-indicator-container">
-                        <div className="typing-bubble">
-                          <div className="typing-dot" /><div className="typing-dot" /><div className="typing-dot" />
+                    {chatHistory.map((m, i) => {
+                      const isOwn = m.senderId === user;
+                      return (
+                        <div key={m.id || i} className={`message-wrapper ${isOwn ? 'sent' : 'received'}`}>
+                          <div className="message-bubble">{m.text}</div>
+                          <span className="message-time">{m.time}</span>
                         </div>
-                      </div>
-                    )}
-                    <div ref={el => endRefs.current[id] = el} />
+                      );
+                    })}
+                    <div ref={el => endRefs.current[username] = el} />
                   </div>
-                  <form onSubmit={e => sendMsg(id, e)} className="chat-window-input-area">
+                  <form onSubmit={e => sendMsg(username, e)} className="chat-window-input-area">
                     <input
-                      type="text" placeholder="Escribe un mensaje..." className="chat-input"
-                      value={inputs[id] || ''} onChange={e => setInputs(prev => ({ ...prev, [id]: e.target.value }))}
+                      type="text" 
+                      placeholder="Escribe un mensaje..." 
+                      className="chat-input"
+                      value={inputs[username] || ''} 
+                      onChange={e => setInputs(prev => ({ ...prev, [username]: e.target.value }))}
                     />
                     <button type="submit" className="chat-send-btn">➤</button>
                   </form>
@@ -140,7 +194,7 @@ function ChatWidget() {
         })}
       </div>
 
-      {/* Barra principal de contactos */}
+      {/* Barra flotante para abrir contactos */}
       <div className="chat-main-bar">
         <div className="chat-main-header" onClick={() => setOpen(!open)}>
           <div className="chat-header-title">
@@ -151,19 +205,27 @@ function ChatWidget() {
         </div>
         {open && (
           <div className="chat-contacts-list">
-            {CONTACTS.map(c => (
-              <div key={c.id} className="chat-contact-item" onClick={() => openChat(c.id)}>
-                <div className="chat-avatar-wrapper">
-                  <div className="chat-avatar" style={{ background: c.color }}>{c.avatar}</div>
-                  <span className={`status-dot ${c.online ? 'online' : 'offline'}`} />
+            {contacts.length > 0 ? (
+              contacts.map(c => (
+                <div key={c.username} className="chat-contact-item" onClick={() => openChat(c.username)}>
+                  <div className="chat-avatar-wrapper">
+                    <div className="chat-avatar" style={{ background: c.avatar.length === 1 ? '#2563eb' : 'transparent' }}>
+                      {c.avatar.length === 1 ? c.avatar : <img src={c.avatar} alt="avatar" style={{ width: '100%', height: '100%', borderRadius: '50%' }} />}
+                    </div>
+                    <span className="status-dot online" />
+                  </div>
+                  <div className="chat-contact-info">
+                    <h5 className="chat-contact-name">u/{c.username}</h5>
+                    <p className="chat-contact-status">{c.bio.length > 30 ? c.bio.substring(0, 30) + '...' : c.bio}</p>
+                  </div>
+                  {(unread[c.username] > 0) && <span className="chat-badge">{unread[c.username]}</span>}
                 </div>
-                <div className="chat-contact-info">
-                  <h5 className="chat-contact-name">{c.name}</h5>
-                  <p className="chat-contact-status">{c.role}</p>
-                </div>
-                {(unread[c.id] > 0) && <span className="chat-badge">{unread[c.id]}</span>}
+              ))
+            ) : (
+              <div style={{ textAlign: 'center', padding: '12px', fontSize: '12px', color: 'var(--text-muted)' }}>
+                No hay otros usuarios registrados.
               </div>
-            ))}
+            )}
           </div>
         )}
       </div>
