@@ -57,6 +57,13 @@ function Sidebar({
           <span className="sidebar-label">Explorar</span>
         </li>
         <li 
+          className={`sidebar-menu-item ${pantalla === 'live' ? 'active' : ''}`} 
+          onClick={() => setPantalla('live')}
+        >
+          <span className="sidebar-icon">🎥</span>
+          <span className="sidebar-label">Directos</span>
+        </li>
+        <li 
           className={`sidebar-menu-item ${pantalla === 'messages' ? 'active' : ''}`} 
           onClick={() => setPantalla('messages')}
         >
