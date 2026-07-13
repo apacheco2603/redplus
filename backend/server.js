@@ -1,348 +1,512 @@
 import express from 'express';
 import cors from 'cors';
-import { readDb, writeDb } from './db.js';
+import sequelize from './db.js';
+import Usuario from './models/Usuario.js';
+import Comunidad from './models/Comunidad.js';
+import Post from './models/Post.js';
+import { Op } from 'sequelize';
+import Mensaje from './models/Mensaje.js';
+import MensajeGrupo from './models/MensajeGrupo.js';
 
 const app = express();
 const PORT = 5000;
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '150mb' }));
+app.use(express.urlencoded({ limit: '150mb', extended: true }));
 
 // --- USUARIOS ---
-app.post('/api/users/login', (req, res) => {
+app.post('/api/users/login', async (req, res) => {
   const { username, password } = req.body;
-  const db = readDb();
-  const user = db.usuarios.find(
-    u => u.username.toLowerCase() === username.trim().toLowerCase() && u.password === password
-  );
-  if (user) {
-    res.json({ success: true, user });
-  } else {
-    res.status(401).json({ success: false, message: 'Usuario o contraseña incorrectos.' });
-  }
-});
-
-app.post('/api/users/register', (req, res) => {
-  const { username, password } = req.body;
-  const db = readDb();
   
-  if (db.usuarios.some(u => u.username.toLowerCase() === username.trim().toLowerCase())) {
-    return res.status(400).json({ success: false, message: 'El usuario ya existe.' });
+  try {
+    const user = await Usuario.findOne({
+      where: { 
+        username: username.trim(),
+        password: password 
+      }
+    });
+
+    if (user) {
+      res.json({ success: true, user });
+    } else {
+      res.status(401).json({ success: false, message: 'Usuario o contraseña incorrectos.' });
+    }
+  } catch (error) {
+    console.error('Error en el login:', error);
+    res.status(500).json({ success: false, message: 'Error interno del servidor.' });
   }
-
-  const newUser = {
-    username: username.trim(),
-    password,
-    bio: '¡Hola! Soy nuevo en RedPlus.',
-    avatar: '👤',
-    habilities: []
-  };
-
-  db.usuarios.push(newUser);
-  writeDb(db);
-  res.json({ success: true, user: newUser });
 });
 
-app.get('/api/users', (req, res) => {
-  const db = readDb();
-  const publicUsers = db.usuarios.map(({ username, bio, avatar, habilities }) => ({
-    username, bio, avatar, habilities
-  }));
-  res.json(publicUsers);
+app.post('/api/users/register', async (req, res) => {
+  const { username, password } = req.body;
+  
+  try {
+    const userExists = await Usuario.findOne({ 
+      where: { username: username.trim() } 
+    });
+
+    if (userExists) {
+      return res.status(400).json({ success: false, message: 'El usuario ya existe.' });
+    }
+
+    const newUser = await Usuario.create({
+      username: username.trim(),
+      password: password
+    });
+
+    res.json({ success: true, user: newUser });
+  } catch (error) {
+    console.error('Error al registrar usuario:', error);
+    res.status(500).json({ success: false, message: 'Error interno del servidor.' });
+  }
 });
 
-app.put('/api/users/profile', (req, res) => {
+app.get('/api/users', async (req, res) => {
+  try {
+    const publicUsers = await Usuario.findAll({
+      attributes: ['username', 'bio', 'avatar', 'habilities'] 
+    });
+    
+    res.json(publicUsers);
+  } catch (error) {
+    console.error('Error al obtener usuarios:', error);
+    res.status(500).json({ message: 'Error en el servidor al obtener usuarios.' });
+  }
+});
+
+app.put('/api/users/profile', async (req, res) => {
   const { username, bio, avatar, habilities } = req.body;
-  const db = readDb();
-  const index = db.usuarios.findIndex(u => u.username === username);
+  
+  try {
+    const user = await Usuario.findOne({ where: { username: username } });
 
-  if (index !== -1) {
-    db.usuarios[index] = { ...db.usuarios[index], bio, avatar, habilities };
-    writeDb(db);
-    res.json({ success: true, user: db.usuarios[index] });
-  } else {
-    res.status(404).json({ success: false, message: 'Usuario no encontrado.' });
+    if (user) {
+      user.bio = bio;
+      user.avatar = avatar;
+      user.habilities = habilities;
+      
+      await user.save();
+      
+      res.json({ success: true, user });
+    } else {
+      res.status(404).json({ success: false, message: 'Usuario no encontrado.' });
+    }
+  } catch (error) {
+    console.error('Error al actualizar el perfil:', error);
+    res.status(500).json({ success: false, message: 'Error interno del servidor.' });
   }
 });
 
 // --- COMUNIDADES ---
-app.get('/api/communities', (req, res) => {
-  const db = readDb();
-  res.json(db.comunidades);
-});
 
-app.post('/api/communities', (req, res) => {
-  const { id, name, desc } = req.body;
-  const db = readDb();
-  
-  if (db.comunidades.some(c => c.id === id || c.name.toLowerCase() === name.toLowerCase())) {
-    return res.status(400).json({ success: false, message: 'El ID o nombre de comunidad ya existe.' });
+app.get('/api/communities', async (req, res) => {
+  try {
+    const comunidades = await Comunidad.findAll();
+    res.json(comunidades);
+  } catch (error) {
+    console.error('Error al obtener comunidades:', error);
+    res.status(500).json({ message: 'Error interno del servidor.' });
   }
-
-  const newComm = { id, name, desc, members: [] };
-  db.comunidades.push(newComm);
-  writeDb(db);
-  res.json({ success: true, community: newComm });
 });
 
-app.post('/api/communities/:id/join', (req, res) => {
+app.post('/api/communities', async (req, res) => {
+  const { id, name, desc } = req.body;
+  
+  try {
+    const exists = await Comunidad.findOne({ 
+      where: { id: id } 
+    });
+
+    if (exists) {
+      return res.status(400).json({ success: false, message: 'El ID de la comunidad ya existe.' });
+    }
+
+    const newComm = await Comunidad.create({
+      id,
+      name,
+      desc
+    });
+
+    res.json({ success: true, community: newComm });
+  } catch (error) {
+    console.error('Error al crear comunidad:', error);
+    res.status(500).json({ success: false, message: 'Error interno.' });
+  }
+});
+
+
+app.post('/api/communities/:id/join', async (req, res) => {
   const { id } = req.params;
   const { username } = req.body;
-  const db = readDb();
-  const comm = db.comunidades.find(c => c.id === id);
+  
+  try {
+    const comm = await Comunidad.findOne({ where: { id } });
 
-  if (!comm) return res.status(404).json({ message: 'Comunidad no encontrada.' });
+    if (!comm) return res.status(404).json({ message: 'Comunidad no encontrada.' });
 
-  if (!comm.members) comm.members = [];
+    let membersList = [...comm.members]; 
+    const memberIndex = membersList.indexOf(username);
+    
+    if (memberIndex === -1) {
+      membersList.push(username); 
+    } else {
+      membersList.splice(memberIndex, 1); 
+    }
 
-  const memberIndex = comm.members.indexOf(username);
-  if (memberIndex === -1) {
-    comm.members.push(username); // unirse
-  } else {
-    comm.members.splice(memberIndex, 1); // salir
+    comm.members = membersList;
+    comm.changed('members', true); 
+    await comm.save();
+
+    res.json({ success: true, community: comm });
+  } catch (error) {
+    console.error('Error al modificar miembros:', error);
+    res.status(500).json({ message: 'Error interno.' });
   }
-
-  writeDb(db);
-  res.json({ success: true, community: comm });
 });
 
 // --- PUBLICACIONES ---
-app.get('/api/posts', (req, res) => {
-  const db = readDb();
-  res.json(db.posts);
-});
-
-app.post('/api/posts', (req, res) => {
-  const { author, title, body: content, communityId } = req.body;
-  const db = readDb();
-
-  const newPost = {
-    id: Date.now(),
-    author,
-    communityId: communityId || 'general',
-    title,
-    body: content,
-    likes: 0,
-    usuariosLike: [],
-    comentarios: []
-  };
-
-  db.posts.unshift(newPost);
-  writeDb(db);
-  res.json({ success: true, post: newPost });
-});
-
-app.put('/api/posts/:id', (req, res) => {
-  const { id } = req.params;
-  const { title, body: content } = req.body;
-  const db = readDb();
-  const post = db.posts.find(p => p.id === parseInt(id));
-
-  if (post) {
-    post.title = title;
-    post.body = content;
-    writeDb(db);
-    res.json({ success: true, post });
-  } else {
-    res.status(404).json({ success: false, message: 'Publicación no encontrada.' });
+app.get('/api/posts', async (req, res) => {
+  try {
+    const posts = await Post.findAll({ order: [['createdAt', 'DESC']] });
+    res.json(posts);
+  } catch (error) {
+    console.error('Error al obtener posts:', error);
+    res.status(500).json({ message: 'Error interno.' });
   }
 });
 
-app.delete('/api/posts/:id', (req, res) => {
-  const { id } = req.params;
-  const db = readDb();
-  db.posts = db.posts.filter(p => p.id !== parseInt(id));
-  writeDb(db);
-  res.json({ success: true });
+app.post('/api/posts', async (req, res) => {
+  const { author, title, body: content, communityId } = req.body;
+
+  try {
+    const newPost = await Post.create({
+      author,
+      communityId: communityId || 'general',
+      title,
+      body: content
+    });
+    res.json({ success: true, post: newPost });
+  } catch (error) {
+    console.error('Error al crear post:', error);
+    res.status(500).json({ success: false, message: 'Error interno.' });
+  }
 });
 
-app.post('/api/posts/:id/like', (req, res) => {
+app.put('/api/posts/:id', async (req, res) => {
+  const { id } = req.params;
+  const { title, body: content } = req.body;
+  
+  try {
+    const post = await Post.findByPk(id); 
+    if (post) {
+      post.title = title;
+      post.body = content;
+      await post.save();
+      res.json({ success: true, post });
+    } else {
+      res.status(404).json({ success: false, message: 'Publicación no encontrada.' });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Error interno.' });
+  }
+});
+
+app.delete('/api/posts/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const post = await Post.findByPk(id);
+    if (post) {
+      await post.destroy(); 
+      res.json({ success: true });
+    } else {
+      res.status(404).json({ success: false, message: 'Publicación no encontrada.' });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Error interno.' });
+  }
+});
+
+app.post('/api/posts/:id/like', async (req, res) => {
   const { id } = req.params;
   const { username } = req.body;
-  const db = readDb();
-  const post = db.posts.find(p => p.id === parseInt(id));
-
-  if (post) {
-    if (!post.usuariosLike) post.usuariosLike = [];
-    const index = post.usuariosLike.indexOf(username);
-    if (index === -1) {
-      post.usuariosLike.push(username);
-      post.likes += 1;
+  
+  try {
+    const post = await Post.findByPk(id);
+    if (post) {
+      let likesList = [...post.usuariosLike];
+      const index = likesList.indexOf(username);
+      
+      if (index === -1) {
+        likesList.push(username);
+        post.likes += 1;
+      } else {
+        likesList.splice(index, 1);
+        post.likes -= 1;
+      }
+      
+      post.usuariosLike = likesList;
+      post.changed('usuariosLike', true);
+      await post.save();
+      
+      res.json({ success: true, post });
     } else {
-      post.usuariosLike.splice(index, 1);
-      post.likes -= 1;
+      res.status(404).json({ success: false, message: 'Publicación no encontrada.' });
     }
-    writeDb(db);
-    res.json({ success: true, post });
-  } else {
-    res.status(404).json({ success: false, message: 'Publicación no encontrada.' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Error interno.' });
   }
 });
 
 // --- COMENTARIOS ---
-app.post('/api/posts/:id/comments', (req, res) => {
+app.post('/api/posts/:id/comments', async (req, res) => {
   const { id } = req.params;
   const { autor, texto } = req.body;
-  const db = readDb();
-  const post = db.posts.find(p => p.id === parseInt(id));
-
-  if (post) {
-    const newComment = {
-      id: Date.now(),
-      autor,
-      texto
-    };
-    if (!post.comentarios) post.comentarios = [];
-    post.comentarios.push(newComment);
-    writeDb(db);
-    res.json({ success: true, comment: newComment, post });
-  } else {
-    res.status(404).json({ success: false, message: 'Publicación no encontrada.' });
+  
+  try {
+    const post = await Post.findByPk(id);
+    if (post) {
+      const newComment = {
+        id: Date.now(),
+        autor,
+        texto
+      };
+      
+      
+      let comments = [...post.comentarios];
+      comments.push(newComment);
+      
+      post.comentarios = comments;
+      post.changed('comentarios', true); 
+      await post.save();
+      
+      res.json({ success: true, comment: newComment, post });
+    } else {
+      res.status(404).json({ success: false, message: 'Publicación no encontrada.' });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Error al agregar comentario.' });
   }
 });
 
-app.put('/api/posts/:postId/comments/:commentId', (req, res) => {
+app.put('/api/posts/:postId/comments/:commentId', async (req, res) => {
   const { postId, commentId } = req.params;
   const { texto } = req.body;
-  const db = readDb();
-  const post = db.posts.find(p => p.id === parseInt(postId));
-
-  if (post) {
-    const comment = post.comentarios.find(c => c.id === parseInt(commentId));
-    if (comment) {
-      comment.texto = texto;
-      writeDb(db);
-      res.json({ success: true, comment, post });
+  
+  try {
+    const post = await Post.findByPk(postId);
+    if (post) {
+      let comments = [...post.comentarios];
+      const commentIndex = comments.findIndex(c => c.id === parseInt(commentId));
+      
+      if (commentIndex !== -1) {
+        comments[commentIndex].texto = texto;
+        post.comentarios = comments;
+        post.changed('comentarios', true);
+        await post.save();
+        res.json({ success: true, comment: comments[commentIndex], post });
+      } else {
+        res.status(404).json({ success: false, message: 'Comentario no encontrado.' });
+      }
     } else {
-      res.status(404).json({ success: false, message: 'Comentario no encontrado.' });
+      res.status(404).json({ success: false, message: 'Publicación no encontrada.' });
     }
-  } else {
-    res.status(404).json({ success: false, message: 'Publicación no encontrada.' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Error al editar comentario.' });
   }
 });
 
-app.delete('/api/posts/:postId/comments/:commentId', (req, res) => {
+app.delete('/api/posts/:postId/comments/:commentId', async (req, res) => {
   const { postId, commentId } = req.params;
-  const db = readDb();
-  const post = db.posts.find(p => p.id === parseInt(postId));
-
-  if (post) {
-    post.comentarios = post.comentarios.filter(c => c.id !== parseInt(commentId));
-    writeDb(db);
-    res.json({ success: true, post });
-  } else {
-    res.status(404).json({ success: false, message: 'Publicación no encontrada.' });
+  
+  try {
+    const post = await Post.findByPk(postId);
+    if (post) {
+      post.comentarios = post.comentarios.filter(c => c.id !== parseInt(commentId));
+      post.changed('comentarios', true);
+      await post.save();
+      res.json({ success: true, post });
+    } else {
+      res.status(404).json({ success: false, message: 'Publicación no encontrada.' });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Error al eliminar comentario.' });
   }
 });
 
 // --- MENSAJES PRIVADOS ---
-app.get('/api/messages', (req, res) => {
+app.get('/api/messages', async (req, res) => {
   const { user } = req.query;
-  const db = readDb();
   
-  if (user) {
-    const filtered = db.mensajes.filter(
-      m => m.senderId === user || m.receiverId === user
-    );
-    res.json(filtered);
-  } else {
-    res.json(db.mensajes);
+  try {
+    if (user) {
+      const filtered = await Mensaje.findAll({
+        where: {
+          [Op.or]: [
+            { senderId: user },
+            { receiverId: user }
+          ]
+        },
+        order: [['createdAt', 'ASC']] 
+      });
+      res.json(filtered);
+    } else {
+      const messages = await Mensaje.findAll();
+      res.json(messages);
+    }
+  } catch (error) {
+    console.error('Error al obtener mensajes:', error);
+    res.status(500).json({ message: 'Error interno del servidor.' });
   }
 });
 
-app.post('/api/messages', (req, res) => {
+app.post('/api/messages', async (req, res) => {
   const { senderId, receiverId, text } = req.body;
-  const db = readDb();
 
-  const newMsg = {
-    id: Date.now(),
-    senderId,
-    receiverId,
-    text,
-    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  };
-
-  db.mensajes.push(newMsg);
-  writeDb(db);
-  res.json({ success: true, message: newMsg });
+  try {
+    const newMsg = await Mensaje.create({
+      senderId,
+      receiverId,
+      text,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    });
+    
+    res.json({ success: true, message: newMsg });
+  } catch (error) {
+    console.error('Error al enviar mensaje:', error);
+    res.status(500).json({ success: false, message: 'Error interno del servidor.' });
+  }
 });
 
-app.put('/api/messages/:id', (req, res) => {
+app.put('/api/messages/:id', async (req, res) => {
   const { id } = req.params;
   const { text } = req.body;
-  const db = readDb();
-  const msg = db.mensajes.find(m => m.id === parseInt(id));
-
-  if (msg) {
-    msg.text = text;
-    writeDb(db);
-    res.json({ success: true, message: msg });
-  } else {
-    res.status(404).json({ success: false, message: 'Mensaje no encontrado.' });
+  
+  try {
+    const msg = await Mensaje.findByPk(id);
+    if (msg) {
+      msg.text = text;
+      await msg.save();
+      res.json({ success: true, message: msg });
+    } else {
+      res.status(404).json({ success: false, message: 'Mensaje no encontrado.' });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Error interno.' });
   }
 });
 
-app.delete('/api/messages/:id', (req, res) => {
+app.delete('/api/messages/:id', async (req, res) => {
   const { id } = req.params;
-  const db = readDb();
-  db.mensajes = db.mensajes.filter(m => m.id !== parseInt(id));
-  writeDb(db);
-  res.json({ success: true });
+  
+  try {
+    const msg = await Mensaje.findByPk(id);
+    if (msg) {
+      await msg.destroy();
+      res.json({ success: true });
+    } else {
+      res.status(404).json({ success: false, message: 'Mensaje no encontrado.' });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Error interno.' });
+  }
 });
 
 // --- CHATS DE GRUPO ---
-app.get('/api/groups/:groupId/chats', (req, res) => {
+app.get('/api/groups/:groupId/chats', async (req, res) => {
   const { groupId } = req.params;
-  const db = readDb();
-  if (!db.groupChats) db.groupChats = {};
-  res.json(db.groupChats[groupId] || [
-    { id: 1, emisor: 'System', texto: `¡Bienvenidos al canal de ${groupId}! Reglas: Respeto y compartir código.` }
-  ]);
+  
+  try {
+    const chats = await MensajeGrupo.findAll({
+      where: { groupId: groupId },
+      order: [['createdAt', 'ASC']] 
+    });
+
+    if (chats.length === 0) {
+      res.json([
+        { id: 1, emisor: 'System', texto: `¡Bienvenidos al canal de ${groupId}! Reglas: Respeto y compartir código.` }
+      ]);
+    } else {
+      res.json(chats);
+    }
+  } catch (error) {
+    console.error('Error al obtener chat de grupo:', error);
+    res.status(500).json({ message: 'Error interno del servidor.' });
+  }
 });
 
-app.post('/api/groups/:groupId/chats', (req, res) => {
+app.post('/api/groups/:groupId/chats', async (req, res) => {
   const { groupId } = req.params;
   const { emisor, texto } = req.body;
-  const db = readDb();
-  if (!db.groupChats) db.groupChats = {};
-  if (!db.groupChats[groupId]) db.groupChats[groupId] = [];
+  
+  try {
+    const newChatMsg = await MensajeGrupo.create({
+      groupId,
+      emisor,
+      texto,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    });
 
-  const newChatMsg = {
-    id: Date.now(),
-    emisor,
-    texto,
-    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  };
-
-  db.groupChats[groupId].push(newChatMsg);
-  writeDb(db);
-  res.json({ success: true, message: newChatMsg });
+    res.json({ success: true, message: newChatMsg });
+  } catch (error) {
+    console.error('Error al enviar mensaje de grupo:', error);
+    res.status(500).json({ success: false, message: 'Error interno.' });
+  }
 });
 
 // --- RECIENTES ---
-app.get('/api/recientes/:username', (req, res) => {
+app.get('/api/recientes/:username', async (req, res) => {
   const { username } = req.params;
-  const db = readDb();
-  const list = db.recientes[username] || [];
-  res.json(list);
+  
+  try {
+    const user = await Usuario.findOne({ where: { username } });
+    res.json(user ? user.recientes : []);
+  } catch (error) {
+    console.error('Error al obtener recientes:', error);
+    res.status(500).json({ message: 'Error en el servidor.' });
+  }
 });
 
-app.post('/api/recientes/:username', (req, res) => {
+app.post('/api/recientes/:username', async (req, res) => {
   const { username } = req.params;
   const { communityId } = req.body;
-  const db = readDb();
   
-  if (!db.recientes) db.recientes = {};
-  if (!db.recientes[username]) db.recientes[username] = [];
-
-  let list = db.recientes[username].filter(id => id !== communityId);
-  list.unshift(communityId);
-  db.recientes[username] = list.slice(0, 5);
-
-  writeDb(db);
-  res.json({ success: true, recientes: db.recientes[username] });
+  try {
+    const user = await Usuario.findOne({ where: { username } });
+    
+    if (user) {
+      let list = user.recientes.filter(id => id !== communityId);
+      list.unshift(communityId);
+      user.recientes = list.slice(0, 5);
+      
+      user.changed('recientes', true);
+      await user.save();
+      
+      res.json({ success: true, recientes: user.recientes });
+    } else {
+      res.status(404).json({ success: false, message: 'Usuario no encontrado.' });
+    }
+  } catch (error) {
+    console.error('Error al guardar reciente:', error);
+    res.status(500).json({ success: false, message: 'Error interno.' });
+  }
 });
+
+const probarConexion = async () => {
+  try {
+    await sequelize.authenticate();
+    console.log('¡Conexión a PostgreSQL correcta!');
+    await sequelize.sync({ alter: true });
+    console.log('¡Tablas sincronizadas!');
+  } catch (error) {
+    console.error('Error al conectar a la BD:', error);
+  }
+};
+
+probarConexion();
 
 app.listen(PORT, () => {
   console.log(`Backend de RedPlus corriendo en http://localhost:${PORT}`);
 });
+
+// Ver grabación del 26 de junio 00:17:00 vinculación postgresql
