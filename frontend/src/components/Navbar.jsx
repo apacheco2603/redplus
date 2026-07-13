@@ -1,4 +1,17 @@
-function Navbar({ theme, toggleTheme, setPantalla, onLogout }) {
+import { useState } from 'react';
+
+function Navbar({ theme, toggleTheme, setPantalla, onLogout, onSearch }) {
+  const [query, setQuery] = useState(''); 
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      if (query.trim() !== '') {
+        if (onSearch) onSearch(query);
+        setPantalla('explore');
+      }
+    }
+  };
+
   return (
     <nav className="navbar">
       <div className="nav-logo" onClick={() => setPantalla('home')} style={{ cursor: 'pointer' }}>
@@ -6,7 +19,14 @@ function Navbar({ theme, toggleTheme, setPantalla, onLogout }) {
       </div>
       
       <div className="search-container">
-        <input type="text" placeholder="Buscar en RedPlus..." className="search-input" />
+        <input 
+          type="text" 
+          placeholder="Buscar en RedPlus..." 
+          className="search-input" 
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={handleKeyDown} 
+        />
       </div>
 
       <div className="nav-actions">
@@ -22,4 +42,4 @@ function Navbar({ theme, toggleTheme, setPantalla, onLogout }) {
   );
 }
 
-export default Navbar;
+export default Navbar;

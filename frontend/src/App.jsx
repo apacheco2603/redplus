@@ -26,6 +26,10 @@ function App() {
   const [pass, setPass] = useState('');
   const [error, setError] = useState('');
 
+  // Estados para el buscador
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+
   // Estados unificados del backend
   const [communities, setCommunities] = useState([]);
   const [joinedCommIds, setJoinedCommIds] = useState([]);
@@ -139,8 +143,45 @@ function App() {
     }
   };
 
+  const handleSearch = async (query) => {
+    try {
+      setSearchQuery(query);
+      const results = await api.search(query);
+      setSearchResults(results);
+      setPantalla('search'); 
+    } catch (err) {
+      console.error('Error al buscar:', err);
+    }
+  };
+
   const cambiarVista = () => {
     if (pantalla === 'profile') return <Profile user={user} />;
+    
+    if (pantalla === 'search') {
+      return (
+        <main className="content-feed">
+          <div style={{ marginBottom: '20px' }}>
+            <h2>🔍 Resultados para: "{searchQuery}"</h2>
+            <p style={{ color: 'var(--text-muted)' }}>{searchResults.length} publicaciones encontradas</p>
+          </div>
+          
+          {searchResults.length > 0 ? (
+            searchResults.map(post => (
+              <div key={post.id} className="post-card" style={{ background: 'var(--card-bg)', padding: '15px', borderRadius: '8px', marginBottom: '15px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+                <span style={{ fontSize: '12px', color: 'var(--primary)', fontWeight: 'bold' }}>r/{post.communityId}</span>
+                <h3 style={{ margin: '5px 0' }}>{post.title}</h3>
+                <p style={{ color: 'var(--text-color)', fontSize: '14px' }}>{post.body}</p>
+                <small style={{ color: 'var(--text-muted)' }}>Publicado por: u/{post.author}</small>
+              </div>
+            ))
+          ) : (
+            <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
+              No se encontraron coincidencias.
+            </div>
+          )}
+        </main>
+      );
+    }
     
     if (pantalla === 'explore') {
       return (
@@ -226,6 +267,7 @@ function App() {
         toggleTheme={() => setTheme(theme === 'light' ? 'dark' : 'light')} 
         setPantalla={setPantalla} 
         onLogout={handleLogout}
+        onSearch={handleSearch}
       />
       <div className="main-layout">
         <Sidebar 

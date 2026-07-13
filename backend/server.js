@@ -177,19 +177,38 @@ app.get('/api/posts', async (req, res) => {
 });
 
 app.post('/api/posts', async (req, res) => {
-  const { author, title, body: content, communityId } = req.body;
+  const { author, title, body: content, communityId, youtubeUrl } = req.body;
 
   try {
     const newPost = await Post.create({
       author,
       communityId: communityId || 'general',
       title,
-      body: content
+      body: content,
+      youtubeUrl: youtubeUrl || null // Lo guardamos si existe
     });
     res.json({ success: true, post: newPost });
   } catch (error) {
     console.error('Error al crear post:', error);
     res.status(500).json({ success: false, message: 'Error interno.' });
+  }
+});
+
+// --- DIRECTOS (STREAMS) ---
+app.get('/api/streams', async (req, res) => {
+  try {
+    const streams = await Post.findAll({
+      where: {
+        youtubeUrl: {
+          [Op.not]: null 
+        }
+      },
+      order: [['createdAt', 'DESC']]
+    });
+    res.json(streams);
+  } catch (error) {
+    console.error('Error al obtener streams:', error);
+    res.status(500).json({ message: 'Error interno del servidor.' });
   }
 });
 
@@ -255,6 +274,31 @@ app.post('/api/posts/:id/like', async (req, res) => {
     }
   } catch (error) {
     res.status(500).json({ success: false, message: 'Error interno.' });
+  }
+});
+
+
+// --- BUSCADOR ---
+app.get('/api/search', async (req, res) => {
+  const { q } = req.query; 
+  
+  if (!q) return res.json([]); 
+
+  try {
+    const resultados = await Post.findAll({
+      where: {
+        [Op.or]: [
+          { title: { [Op.iLike]: `%${q}%` } },
+          { body: { [Op.iLike]: `%${q}%` } }
+        ]
+      },
+      order: [['createdAt', 'DESC']] 
+    });
+
+    res.json(resultados);
+  } catch (error) {
+    console.error('Error en el buscador:', error);
+    res.status(500).json({ message: 'Error interno del servidor.' });
   }
 });
 

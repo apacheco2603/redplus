@@ -17,6 +17,10 @@ const Post = sequelize.define('Post', {
   body: {
     type: DataTypes.TEXT
   },
+  youtubeUrl: {
+    type: DataTypes.STRING,
+    allowNull: true 
+  },
   likes: {
     type: DataTypes.INTEGER,
     defaultValue: 0

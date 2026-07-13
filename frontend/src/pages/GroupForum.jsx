@@ -8,6 +8,7 @@ function GroupForum({ group, setPantalla, user, isJoined, onToggleJoin }) {
   // Estados para nuevo post
   const [nuevoPostTitulo, setNuevoPostTitulo] = useState('');
   const [nuevoPostTexto, setNuevoPostTexto] = useState('');
+  const [nuevoPostYoutube, setNuevoPostYoutube] = useState('');
 
   // Estados para comentarios nuevos
   const [nuevosComentarios, setNuevosComentarios] = useState({});
@@ -47,10 +48,11 @@ function GroupForum({ group, setPantalla, user, isJoined, onToggleJoin }) {
     if (!nuevoPostTitulo.trim() || !nuevoPostTexto.trim()) return;
 
     try {
-      const res = await api.createPost(user, nuevoPostTitulo.trim(), nuevoPostTexto.trim(), group.id);
+      const res = await api.createPost(user, nuevoPostTitulo.trim(), nuevoPostTexto.trim(), group.id, nuevoPostYoutube.trim());
       if (res.success) {
         setNuevoPostTitulo('');
         setNuevoPostTexto('');
+        setNuevoPostYoutube(''); 
         await cargarPublicaciones();
       }
     } catch (err) {
@@ -233,6 +235,16 @@ function GroupForum({ group, setPantalla, user, isJoined, onToggleJoin }) {
             rows="3"
             className="create-post-body"
           />
+          {/* --- INPUT DE YOUTUBE --- */}
+          <input 
+            type="text" 
+            placeholder="Enlace de YouTube (Opcional - ej: https://youtube.com/watch?v=...)" 
+            value={nuevoPostYoutube}
+            onChange={(e) => setNuevoPostYoutube(e.target.value)}
+            className="create-post-title"
+            style={{ marginTop: '10px', fontSize: '13px', borderColor: '#ff000044' }}
+          />
+          {/* ------------------------------- */}
           <div className="create-post-footer">
             <button type="submit" className="btn-primary">Publicar</button>
           </div>

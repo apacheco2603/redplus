@@ -192,13 +192,30 @@ export const api = {
     }),
 
   // --- POSTS ---
+  //Buscador
+  search: (query) => 
+    request(`/search?q=${encodeURIComponent(query)}`, {}, () => {
+      const posts = localDb.get('posts', []);
+      const q = query.toLowerCase();
+      return posts.filter(p => 
+        p.title.toLowerCase().includes(q) || 
+        p.body.toLowerCase().includes(q)
+      );
+    }),
+
   getPosts: () => 
     request('/posts', {}, () => {
       return localDb.get('posts', []);
     }),
+  
+  getStreams: () => 
+    request('/streams', {}, () => {
+      const posts = localDb.get('posts', []);
+      return posts.filter(p => p.youtubeUrl);
+    }),
 
-  createPost: (author, title, body, communityId) => 
-    request('/posts', { method: 'POST', body: { author, title, body, communityId } }, () => {
+  createPost: (author, title, body, communityId, youtubeUrl = null) => 
+    request('/posts', { method: 'POST', body: { author, title, body, communityId, youtubeUrl } }, () => {
       const posts = localDb.get('posts', []);
       const newPost = {
         id: Date.now(),
@@ -417,4 +434,5 @@ export const api = {
       localDb.set('groupChats', chats);
       return { success: true, message: newMsg };
     })
+    
 };
