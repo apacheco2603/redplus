@@ -61,7 +61,7 @@ function Sidebar({
           onClick={() => setPantalla('live')}
         >
           <span className="sidebar-icon">🎥</span>
-          <span className="sidebar-label">Directos</span>
+          <span className="sidebar-label">Videos y Directos</span>
         </li>
         <li 
           className={`sidebar-menu-item ${pantalla === 'messages' ? 'active' : ''}`} 

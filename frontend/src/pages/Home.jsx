@@ -8,9 +8,12 @@ const TRENDING = [
   { tag: '#WebDev',      posts: '24.9k posts', category: 'Programación' }
 ];
 
-function Home({ user, isPopularView, joinedCommIds = [] }) {
+function Home({ user, isPopularView, joinedCommIds = [], setPantalla, onSearch }) {
   const [publicaciones, setPublicaciones] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const [nuevoPostTags, setNuevoPostTags] = useState('');
+  const [tendencias, setTendencias] = useState([]);
 
   // Estados para creación
   const [nuevoPostTitulo, setNuevoPostTitulo] = useState('');
@@ -35,11 +38,14 @@ function Home({ user, isPopularView, joinedCommIds = [] }) {
       setLoading(true);
       const data = await api.getPosts();
       setPublicaciones(data);
+      const trendsData = await api.getTrends();
+      setTendencias(trendsData);
     } catch (err) {
       console.error('Error al cargar publicaciones:', err);
     } finally {
       setLoading(false);
     }
+
   };
 
   useEffect(() => {
@@ -50,12 +56,17 @@ function Home({ user, isPopularView, joinedCommIds = [] }) {
     e.preventDefault();
     if (!nuevoPostTexto.trim() || !nuevoPostTitulo.trim()) return;
 
+    const tagsArray = nuevoPostTags
+      .split(',')
+      .map(tag => tag.trim().toLowerCase().replace('#', ''))
+      .filter(tag => tag !== '');
+
     try {
-      const res = await api.createPost(user, nuevoPostTitulo.trim(), nuevoPostTexto.trim(), 'general');
+      const res = await api.createPost(user, nuevoPostTitulo.trim(), nuevoPostTexto.trim(), 'general', null, tagsArray);
       if (res.success) {
         setNuevoPostTitulo('');
         setNuevoPostTexto('');
-        // Recargar la lista
+        setNuevoPostTags(''); 
         await cargarPosts();
       }
     } catch (err) {
@@ -229,6 +240,14 @@ function Home({ user, isPopularView, joinedCommIds = [] }) {
               rows="3"
               className="create-post-body"
             />
+            <input 
+              type="text" 
+              placeholder="Tags separados por coma (ej: Programación, Hardware, Dudas)" 
+              value={nuevoPostTags}
+              onChange={(e) => setNuevoPostTags(e.target.value)}
+              className="create-post-title"
+              style={{ marginTop: '10px', fontSize: '13px', borderColor: '#3b82f644' }}
+            />
             <div className="create-post-footer">
               <button type="submit" className="btn-primary">Publicar</button>
             </div>
@@ -288,6 +307,31 @@ function Home({ user, isPopularView, joinedCommIds = [] }) {
                     <>
                       <h3>{p.title}</h3>
                       <p>{p.body}</p>
+                    {/* --- BOTÓN DE VIDEO PARA EL MURO PRINCIPAL/POPULAR --- */}
+                      {p.youtubeUrl && (
+                        <div style={{ marginTop: '15px' }}>
+                          <button 
+                            onClick={() => setPantalla('live')}
+                            style={{
+                              backgroundColor: '#ef4444',
+                              color: 'white',
+                              border: 'none',
+                              padding: '8px 16px',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              fontWeight: 'bold',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              fontSize: '14px',
+                              boxShadow: '0 2px 4px rgba(239, 68, 68, 0.2)'
+                            }}
+                          >
+                            ▶ Ver video aquí
+                          </button>
+                        </div>
+                      )}
+                      {/* ----------------------------------------------------- */}
                     </>
                   )}
                 </div>
@@ -376,13 +420,24 @@ function Home({ user, isPopularView, joinedCommIds = [] }) {
       <aside className="sidebar trending-aside" style={{ width: '280px' }}>
         <h3>⚡ Tendencias para ti</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '1rem' }}>
-          {TRENDING.map((t, i) => (
-            <div key={i} style={{ padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
-              <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{t.category}</span>
-              <p style={{ margin: '2px 0', fontWeight: 'bold', fontSize: '14px' }}>{t.tag}</p>
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{t.posts}</span>
-            </div>
-          ))}
+          {tendencias.length > 0 ? (
+            tendencias.map((t, i) => (
+              <div 
+                key={i} 
+                style={{ padding: '6px 0', borderBottom: '1px solid var(--border)', cursor: 'pointer' }}
+                onClick={() => {
+                  if (onSearch) onSearch(t.tag);
+                }}
+              >
+                <p style={{ margin: '2px 0', fontWeight: 'bold', fontSize: '14px', color: 'var(--primary)' }}>
+                  <span style={{ transition: 'color 0.2s' }} className="hover-trend">#{t.tag}</span>
+                </p>
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{t.posts} publicaciones</span>
+              </div>
+            ))
+          ) : (
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Aún no hay tendencias.</p>
+          )}
         </div>
       </aside>
     </>

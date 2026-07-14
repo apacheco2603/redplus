@@ -201,7 +201,7 @@ function LiveStreams() {
   return (
     <main className="content-feed">
       <div style={{ marginBottom: '20px' }}>
-        <h2>🔴 Programación en VIVO</h2>
+        <h2>🔴 Videos y Directos en VIVO</h2>
         <p style={{ color: 'var(--text-muted)' }}>Explora publicaciones con video, asiste a explicaciones y chatea con los estudiantes.</p>
       </div>
 

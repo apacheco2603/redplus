@@ -14,8 +14,13 @@ import { api } from './services/api';
 
 function App() {
   const [theme, setTheme] = useState('light');
-  const [pantalla, setPantalla] = useState('home');
-  const [activeGroup, setActiveGroup] = useState(null);
+  const [pantalla, setPantalla] = useState(() => {
+    return localStorage.getItem('saved_pantalla') || 'home';
+  });
+  const [activeGroup, setActiveGroup] = useState(() => {
+    const saved = localStorage.getItem('saved_activeGroup');
+    return saved ? JSON.parse(saved) : null;
+  });
   const [isLoggedIn, setIsLoggedIn] = useState(() => {
     return localStorage.getItem('session_isLoggedIn') === 'true';
   });
@@ -45,6 +50,18 @@ function App() {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
+  useEffect(() => {
+    localStorage.setItem('saved_pantalla', pantalla);
+  }, [pantalla]);
+
+  useEffect(() => {
+    if (activeGroup) {
+      localStorage.setItem('saved_activeGroup', JSON.stringify(activeGroup));
+    } else {
+      localStorage.removeItem('saved_activeGroup');
+    }
+  }, [activeGroup]);
+  
   // Cargar datos al iniciar sesión
   useEffect(() => {
     if (!isLoggedIn || !user) return;
@@ -171,6 +188,24 @@ function App() {
                 <span style={{ fontSize: '12px', color: 'var(--primary)', fontWeight: 'bold' }}>r/{post.communityId}</span>
                 <h3 style={{ margin: '5px 0' }}>{post.title}</h3>
                 <p style={{ color: 'var(--text-color)', fontSize: '14px' }}>{post.body}</p>
+                
+                {/* --- BOTÓN DE VIDEO PARA EL BUSCADOR --- */}
+                {post.youtubeUrl && (
+                  <div style={{ marginTop: '10px', marginBottom: '10px' }}>
+                    <button 
+                      onClick={() => setPantalla('live')}
+                      style={{
+                        backgroundColor: '#ef4444', color: 'white', border: 'none', 
+                        padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', 
+                        fontWeight: 'bold', fontSize: '12px'
+                      }}
+                    >
+                      ▶ Ver video aquí
+                    </button>
+                  </div>
+                )}
+                {/* --------------------------------------- */}
+
                 <small style={{ color: 'var(--text-muted)' }}>Publicado por: u/{post.author}</small>
               </div>
             ))
@@ -217,7 +252,7 @@ function App() {
     if (pantalla === 'messages') return <Messages user={user} />;
 
     // Vista principal ('home') y popular ('popular')
-    return <Home user={user} isPopularView={pantalla === 'popular'} joinedCommIds={joinedCommIds} />;
+    return <Home user={user} isPopularView={pantalla === 'popular'} joinedCommIds={joinedCommIds} setPantalla={setPantalla} onSearch={handleSearch} />;
   };
 
   if (!isLoggedIn) {

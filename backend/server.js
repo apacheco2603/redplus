@@ -177,7 +177,7 @@ app.get('/api/posts', async (req, res) => {
 });
 
 app.post('/api/posts', async (req, res) => {
-  const { author, title, body: content, communityId, youtubeUrl } = req.body;
+  const { author, title, body: content, communityId, youtubeUrl, tags } = req.body;
 
   try {
     const newPost = await Post.create({
@@ -185,7 +185,8 @@ app.post('/api/posts', async (req, res) => {
       communityId: communityId || 'general',
       title,
       body: content,
-      youtubeUrl: youtubeUrl || null // Lo guardamos si existe
+      youtubeUrl: youtubeUrl || null,
+      tags: tags || []
     });
     res.json({ success: true, post: newPost });
   } catch (error) {
@@ -298,6 +299,33 @@ app.get('/api/search', async (req, res) => {
     res.json(resultados);
   } catch (error) {
     console.error('Error en el buscador:', error);
+    res.status(500).json({ message: 'Error interno del servidor.' });
+  }
+});
+
+// --- TENDENCIAS (TRENDS) ---
+app.get('/api/trends', async (req, res) => {
+  try {
+    const posts = await Post.findAll();
+    const conteoTags = {};
+
+    posts.forEach(post => {
+      if (post.tags && post.tags.length > 0) {
+        post.tags.forEach(tag => {
+          const tagLimpio = tag.trim().toLowerCase();
+          conteoTags[tagLimpio] = (conteoTags[tagLimpio] || 0) + 1;
+        });
+      }
+    });
+
+    const topTendencias = Object.keys(conteoTags)
+      .map(tag => ({ tag: tag, posts: conteoTags[tag] }))
+      .sort((a, b) => b.posts - a.posts)
+      .slice(0, 5);
+
+    res.json(topTendencias);
+  } catch (error) {
+    console.error('Error al obtener tendencias:', error);
     res.status(500).json({ message: 'Error interno del servidor.' });
   }
 });

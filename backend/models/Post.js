@@ -21,6 +21,10 @@ const Post = sequelize.define('Post', {
     type: DataTypes.STRING,
     allowNull: true 
   },
+  tags: {
+    type: DataTypes.ARRAY(DataTypes.STRING),
+    defaultValue: [] 
+  },
   likes: {
     type: DataTypes.INTEGER,
     defaultValue: 0

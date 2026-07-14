@@ -193,19 +193,25 @@ export const api = {
 
   // --- POSTS ---
   //Buscador
-  search: (query) => 
+search: (query) => 
     request(`/search?q=${encodeURIComponent(query)}`, {}, () => {
       const posts = localDb.get('posts', []);
       const q = query.toLowerCase();
       return posts.filter(p => 
         p.title.toLowerCase().includes(q) || 
-        p.body.toLowerCase().includes(q)
+        p.body.toLowerCase().includes(q) ||
+        (p.tags && p.tags.some(tag => tag.toLowerCase().includes(q)))
       );
     }),
 
   getPosts: () => 
     request('/posts', {}, () => {
       return localDb.get('posts', []);
+    }),
+
+  getTrends: () => 
+    request('/trends', {}, () => {
+      return []; 
     }),
   
   getStreams: () => 
@@ -214,8 +220,8 @@ export const api = {
       return posts.filter(p => p.youtubeUrl);
     }),
 
-  createPost: (author, title, body, communityId, youtubeUrl = null) => 
-    request('/posts', { method: 'POST', body: { author, title, body, communityId, youtubeUrl } }, () => {
+  createPost: (author, title, body, communityId, youtubeUrl = null, tags = []) =>
+    request('/posts', { method: 'POST', body: { author, title, body, communityId, youtubeUrl, tags } }, () => {
       const posts = localDb.get('posts', []);
       const newPost = {
         id: Date.now(),

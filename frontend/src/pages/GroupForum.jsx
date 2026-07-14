@@ -9,6 +9,7 @@ function GroupForum({ group, setPantalla, user, isJoined, onToggleJoin }) {
   const [nuevoPostTitulo, setNuevoPostTitulo] = useState('');
   const [nuevoPostTexto, setNuevoPostTexto] = useState('');
   const [nuevoPostYoutube, setNuevoPostYoutube] = useState('');
+  const [nuevoPostTags, setNuevoPostTags] = useState('');
 
   // Estados para comentarios nuevos
   const [nuevosComentarios, setNuevosComentarios] = useState({});
@@ -47,12 +48,18 @@ function GroupForum({ group, setPantalla, user, isJoined, onToggleJoin }) {
     e.preventDefault();
     if (!nuevoPostTitulo.trim() || !nuevoPostTexto.trim()) return;
 
+const tagsArray = nuevoPostTags
+      .split(',')
+      .map(tag => tag.trim().toLowerCase().replace('#', ''))
+      .filter(tag => tag !== '');
+
     try {
-      const res = await api.createPost(user, nuevoPostTitulo.trim(), nuevoPostTexto.trim(), group.id, nuevoPostYoutube.trim());
+      const res = await api.createPost(user, nuevoPostTitulo.trim(), nuevoPostTexto.trim(), group.id, nuevoPostYoutube.trim(), tagsArray);
       if (res.success) {
         setNuevoPostTitulo('');
         setNuevoPostTexto('');
-        setNuevoPostYoutube(''); 
+        setNuevoPostYoutube('');
+        setNuevoPostTags(''); 
         await cargarPublicaciones();
       }
     } catch (err) {
@@ -245,6 +252,18 @@ function GroupForum({ group, setPantalla, user, isJoined, onToggleJoin }) {
             style={{ marginTop: '10px', fontSize: '13px', borderColor: '#ff000044' }}
           />
           {/* ------------------------------- */}
+          
+          {/* --- NUEVO INPUT DE HASHTAGS --- */}
+          <input 
+            type="text" 
+            placeholder="Tags separados por coma (ej: Hardware, PC, Dudas)" 
+            value={nuevoPostTags}
+            onChange={(e) => setNuevoPostTags(e.target.value)}
+            className="create-post-title"
+            style={{ marginTop: '10px', fontSize: '13px', borderColor: '#3b82f644' }}
+          />
+          {/* ------------------------------- */}
+          
           <div className="create-post-footer">
             <button type="submit" className="btn-primary">Publicar</button>
           </div>
@@ -303,6 +322,32 @@ function GroupForum({ group, setPantalla, user, isJoined, onToggleJoin }) {
                     <div className="post-forum-content">
                       {post.body}
                     </div>
+                    
+                    {/* --- BOTÓN PARA REDIRIGIR A DIRECTOS --- */}
+                    {post.youtubeUrl && (
+                      <div style={{ marginTop: '15px' }}>
+                        <button 
+                          onClick={() => setPantalla('live')}
+                          style={{
+                            backgroundColor: '#ef4444',
+                            color: 'white',
+                            border: 'none',
+                            padding: '8px 16px',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            fontWeight: 'bold',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            fontSize: '14px',
+                            boxShadow: '0 2px 4px rgba(239, 68, 68, 0.2)'
+                          }}
+                        >
+                          ▶ Ver video aquí
+                        </button>
+                      </div>
+                    )}
+                    {/* --------------------------------------- */}
                   </>
                 )}
               </div>
